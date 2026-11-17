@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مركز عاشور - إدارة المبيعات والمخزون</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -30,9 +31,6 @@
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #e2e8f0; }
         ::-webkit-scrollbar-thumb { background: #0F5C4E; border-radius: 3px; }
-        .has-[:checked]:bg-emerald-50 { background-color: #ecfdf5; }
-        .has-[:checked]:border-emerald-600 { border-color: #059669; }
-        .has-[:checked]:text-emerald-800 { color: #065f46; }
         .pulse-btn { animation: pulse 2s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
     </style>
@@ -91,8 +89,6 @@
                 <button onclick="switchTab('invoices')" id="tab-invoices" class="tab-btn px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-white/20 transition whitespace-nowrap"><i class="fa-solid fa-file-invoice"></i> سجل الفواتير</button>
                 <button onclick="switchTab('products')" id="tab-products" class="tab-btn px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-white/20 transition whitespace-nowrap"><i class="fa-solid fa-box"></i> المنتجات</button>
                 <button onclick="switchTab('clients')" id="tab-clients" class="tab-btn px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-white/20 transition whitespace-nowrap"><i class="fa-solid fa-users"></i> الزبائن</button>
-                <button onclick="switchTab('purchases')" id="tab-purchases" class="tab-btn px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-white/20 transition whitespace-nowrap"><i class="fa-solid fa-truck-ramp-box"></i> المشتريات</button>
-                <button onclick="switchTab('returns')" id="tab-returns" class="tab-btn px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-white/20 transition whitespace-nowrap"><i class="fa-solid fa-rotate-left"></i> المرتجعات</button>
                 <button onclick="switchTab('reports')" id="tab-reports" class="tab-btn px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-white/20 transition whitespace-nowrap"><i class="fa-solid fa-chart-line"></i> التقارير</button>
                 <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-white/20 transition whitespace-nowrap"><i class="fa-solid fa-gear"></i> الإعدادات</button>
             </nav>
@@ -101,20 +97,17 @@
                 <button onclick="exportDataBackup()" class="bg-emerald-500 hover:bg-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 pulse-btn" title="احفظ نسخة احتياطية الآن!">
                     <i class="fa-solid fa-cloud-arrow-down"></i> نسخة احتياطية
                 </button>
-                <button onclick="lockApp()" class="bg-red-500/80 hover:bg-red-600 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
-                    <i class="fa-solid fa-lock"></i> قفل
-                </button>
+                <button onclick="lockApp()" class="bg-red-500/80 hover:bg-red-600 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1"><i class="fa-solid fa-lock"></i> قفل</button>
             </div>
         </div>
     </header>
 
-    <!-- KPI BAR -->
+    <!-- KPI BAR (Removed Low Stock Card) -->
     <section class="bg-white border-b border-gray-200 py-2.5 px-4 shadow-sm">
-        <div class="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-3 text-center">
             <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 flex items-center justify-between"><div><span class="text-xs text-emerald-700 font-bold block">مبيعات اليوم</span><span id="kpiSales" class="text-lg font-black text-emerald-900">0 ل.س</span></div><i class="fa-solid fa-sack-dollar text-2xl text-emerald-600 opacity-80"></i></div>
             <div class="bg-blue-50 border border-blue-200 rounded-xl p-2.5 flex items-center justify-between"><div><span class="text-xs text-blue-700 font-bold block">ربح اليوم المتوقع</span><span id="kpiProfit" class="text-lg font-black text-blue-900">0 ل.س</span></div><i class="fa-solid fa-chart-pie text-2xl text-blue-600 opacity-80"></i></div>
             <div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-center justify-between"><div><span class="text-xs text-amber-700 font-bold block">إجمالي الديون</span><span id="kpiDebts" class="text-lg font-black text-amber-900">0 ل.س</span></div><i class="fa-solid fa-hand-holding-dollar text-2xl text-amber-600 opacity-80"></i></div>
-            <div class="bg-red-50 border border-red-200 rounded-xl p-2.5 flex items-center justify-between"><div><span class="text-xs text-red-700 font-bold block">منتجات منخفضة</span><span id="kpiLowStock" class="text-lg font-black text-red-900">0 أصناف</span></div><i class="fa-solid fa-triangle-exclamation text-2xl text-red-600 opacity-80"></i></div>
         </div>
     </section>
 
@@ -126,17 +119,18 @@
             <div class="lg:col-span-7 flex flex-col gap-3">
                 <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-200 flex flex-col gap-3">
                     <div class="flex gap-2">
+                        <div class="relative w-1/3">
+                            <input type="text" id="quickEntryInput" onkeydown="handleQuickEntry(event)" placeholder="كود*كمية (مثال: 101*50)" class="w-full bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-600 font-bold placeholder-emerald-700/50" title="أدخل كود المنتج ثم * ثم الكمية واضغط Enter">
+                        </div>
                         <div class="relative flex-grow">
-                            <input type="text" id="posSearch" oninput="renderPosProducts()" placeholder="ابحث باسم المنتج أو الفئة..." class="w-full bg-gray-50 border border-gray-300 rounded-xl pr-10 pl-4 py-2.5 text-sm focus:outline-none focus:border-ashour font-bold">
+                            <input type="text" id="posSearch" oninput="renderPosProducts()" placeholder="ابحث بالاسم أو الكود..." class="w-full bg-gray-50 border border-gray-300 rounded-xl pr-10 pl-4 py-2.5 text-sm focus:outline-none focus:border-ashour font-bold">
                             <i class="fa-solid fa-magnifying-glass absolute right-3.5 top-3 text-gray-400"></i>
                         </div>
-                        <!-- Quick Add Product Button -->
-                        <button onclick="openQuickProductModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 shadow-sm">
-                            <i class="fa-solid fa-plus"></i> منتج سريع
-                        </button>
+                        <button onclick="openQuickProductModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 shadow-sm"><i class="fa-solid fa-plus"></i> منتج سريع</button>
                     </div>
                     <div id="posCategoryFilter" class="flex gap-2 overflow-x-auto pb-1"></div>
                 </div>
+                
                 <div id="posProductsGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto max-h-[520px] p-1"></div>
             </div>
 
@@ -195,21 +189,22 @@
         <!-- PRODUCTS -->
         <div id="view-products" class="tab-view hidden space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-3 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
-                <div><h2 class="text-xl font-black text-ashour">إدارة المنتجات والأصناف</h2><p class="text-xs text-gray-500">إضافة وتعديل الأسعار والكميات والمخزون</p></div>
+                <div><h2 class="text-xl font-black text-ashour">إدارة المنتجات والأصناف</h2><p class="text-xs text-gray-500">إضافة، تعديل الأسماء والأسعار</p></div>
                 <div class="flex gap-2">
                     <button onclick="openSmartPasteModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1 shadow-sm"><i class="fa-solid fa-paste"></i> اللصق الذكي</button>
                     <button onclick="openProductModal()" class="bg-ashour hover:bg-ashour-dark text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1 shadow-sm"><i class="fa-solid fa-plus"></i> إضافة منتج</button>
                 </div>
             </div>
             <div class="bg-white p-3 rounded-2xl border border-gray-200 flex flex-wrap gap-3 items-center">
-                <input type="text" id="prodSearch" oninput="renderProductsTable()" placeholder="ابحث باسم المنتج..." class="bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold w-64">
+                <input type="text" id="prodSearch" oninput="renderProductsTable()" placeholder="ابحث بالاسم أو الكود..." class="bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold w-64">
                 <select id="prodCategoryFilter" onchange="renderProductsTable()" class="bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold">
-                    <option value="">جميع الفئات</option><option value="بسكويت">بسكويت</option><option value="شيبس">شيبس</option><option value="عصائر">عصائر</option><option value="سكاكر وعلكة">سكاكر وعلكة</option><option value="مواد غذائية">مواد غذائية أخرى</option>
+                    <option value="">جميع الفئات</option><option value="بسكويت">بسكويت</option><option value="شيبس">شيبس</option><option value="عصائر ومشروبات">عصائر ومشروبات</option><option value="سكاكر وعلكة">سكاكر وعلكة</option><option value="قهوة">قهوة</option>
                 </select>
             </div>
             <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-x-auto">
                 <table class="w-full text-right text-xs">
-                    <thead class="bg-ashour text-white font-bold"><tr><th class="p-3">اسم المنتج</th><th class="p-3">الفئة</th><th class="p-3">شراء</th><th class="p-3">تجزئة</th><th class="p-3">جملة</th><th class="p-3">المخزون</th><th class="p-3">الربح</th><th class="p-3 text-center">إجراءات</th></tr></thead>
+                    <!-- تم حذف عمود المخزون من الترويسة -->
+                    <thead class="bg-ashour text-white font-bold"><tr><th class="p-3">صورة</th><th class="p-3">الكود</th><th class="p-3">اسم المنتج</th><th class="p-3">الفئة</th><th class="p-3">شراء</th><th class="p-3">تجزئة</th><th class="p-3">جملة</th><th class="p-3 text-center">إجراءات</th></tr></thead>
                     <tbody id="productsTableBody" class="divide-y divide-gray-100 font-bold"></tbody>
                 </table>
             </div>
@@ -222,34 +217,6 @@
                 <button onclick="openClientModal()" class="bg-ashour hover:bg-ashour-dark text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1 shadow-sm"><i class="fa-solid fa-user-plus"></i> إضافة زبون</button>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="clientsGrid"></div>
-        </div>
-
-        <!-- PURCHASES -->
-        <div id="view-purchases" class="tab-view hidden space-y-4">
-            <div class="flex flex-wrap justify-between items-center gap-3 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
-                <div><h2 class="text-xl font-black text-ashour">المشتريات والتوريد</h2><p class="text-xs text-gray-500">تسجيل الفواتير الواردة وتحديث المخزون</p></div>
-                <button onclick="openPurchaseModal()" class="bg-ashour hover:bg-ashour-dark text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1 shadow-sm"><i class="fa-solid fa-cart-plus"></i> تسجيل فاتورة شراء</button>
-            </div>
-            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-x-auto">
-                <table class="w-full text-right text-xs">
-                    <thead class="bg-ashour text-white font-bold"><tr><th class="p-3">رقم</th><th class="p-3">التاريخ</th><th class="p-3">المورد</th><th class="p-3">المنتج</th><th class="p-3">الكمية</th><th class="p-3">التكلفة</th></tr></thead>
-                    <tbody id="purchasesTableBody" class="divide-y divide-gray-100 font-bold"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- RETURNS -->
-        <div id="view-returns" class="tab-view hidden space-y-4">
-            <div class="flex flex-wrap justify-between items-center gap-3 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
-                <div><h2 class="text-xl font-black text-ashour">مرتجعات البضائع</h2><p class="text-xs text-gray-500">إرجاع البضاعة، خصم قيمتها وتحديث المخزون تلقائياً</p></div>
-                <button onclick="openReturnModal()" class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1 shadow-sm"><i class="fa-solid fa-arrow-rotate-left"></i> تسجيل مرتجع</button>
-            </div>
-            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-x-auto">
-                <table class="w-full text-right text-xs">
-                    <thead class="bg-ashour text-white font-bold"><tr><th class="p-3">رقم</th><th class="p-3">التاريخ</th><th class="p-3">الزبون</th><th class="p-3">الفاتورة الأصلية</th><th class="p-3">المنتج</th><th class="p-3">الكمية</th><th class="p-3">المبلغ المخصوم</th></tr></thead>
-                    <tbody id="returnsTableBody" class="divide-y divide-gray-100 font-bold"></tbody>
-                </table>
-            </div>
         </div>
 
         <!-- REPORTS -->
@@ -284,7 +251,6 @@
                 </div>
 
                 <hr class="border-gray-100">
-
                 <div class="space-y-3">
                     <h3 class="font-bold text-sm text-gray-800">تغيير رمز قفل PIN</h3>
                     <div class="flex gap-2 max-w-sm">
@@ -294,7 +260,6 @@
                 </div>
 
                 <hr class="border-gray-100">
-
                 <div class="space-y-3">
                     <h3 class="font-bold text-sm text-gray-800 text-red-600"><i class="fa-solid fa-triangle-exclamation"></i> النسخ الاحتياطي (هام جداً!)</h3>
                     <p class="text-xs text-gray-500">يُرجى تصدير نسخة احتياطية بشكل يومي أو أسبوعي وحفظها في مكان آمن (مثل Google Drive) لضمان عدم فقدان البيانات.</p>
@@ -302,12 +267,6 @@
                         <button onclick="exportDataBackup()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2"><i class="fa-solid fa-download"></i> تصدير النسخة</button>
                         <label class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 cursor-pointer"><i class="fa-solid fa-upload"></i> استعادة البيانات<input type="file" id="importBackupFile" onchange="importDataBackup(event)" class="hidden" accept=".json"></label>
                     </div>
-                </div>
-
-                <hr class="border-gray-100">
-                <div class="space-y-2">
-                    <h3 class="font-bold text-sm text-red-600">إعادة تعيين بيانات العرض</h3>
-                    <button onclick="resetDemoData()" class="bg-red-100 text-red-700 hover:bg-red-200 border border-red-300 text-xs px-4 py-2 rounded-xl font-bold transition">استعادة البيانات الأولية</button>
                 </div>
             </div>
         </div>
@@ -320,14 +279,17 @@
     <div id="quickProductModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4">
             <h3 class="text-lg font-black text-indigo-700"><i class="fa-solid fa-bolt"></i> إضافة منتج سريع</h3>
-            <p class="text-xs text-gray-500">لإضافته للفاتورة فوراً دون الحاجة للذهاب لصفحة المنتجات.</p>
+            <p class="text-xs text-gray-500">لإضافته للفاتورة فوراً.</p>
             <div class="space-y-3 text-xs font-bold">
                 <div><label class="block mb-1">اسم المنتج:</label><input type="text" id="qpName" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
                 <div class="grid grid-cols-2 gap-2">
                     <div><label class="block mb-1">السعر (تجزئة):</label><input type="number" id="qpRetail" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
                     <div><label class="block mb-1">السعر (جملة):</label><input type="number" id="qpWholesale" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
                 </div>
-                <div><label class="block mb-1">الكمية الأولية:</label><input type="number" id="qpStock" value="100" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="block mb-1">كود المنتج (SKU):</label><input type="text" id="qpSku" placeholder="مثال: 101" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+                    <input type="hidden" id="qpStock" value="9999">
+                </div>
             </div>
             <div class="flex gap-2 pt-2">
                 <button onclick="saveQuickProduct()" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-indigo-700">إضافة للفاتورة</button>
@@ -336,10 +298,56 @@
         </div>
     </div>
 
+    <!-- Product Modal (Add/Edit) -->
+    <div id="productModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <h3 id="productModalTitle" class="text-lg font-black text-ashour">إضافة / تعديل منتج</h3>
+            <input type="hidden" id="prodEditId">
+            <div class="space-y-3 text-xs font-bold">
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="block mb-1">كود المنتج (SKU):</label><input type="text" id="prodSkuInput" placeholder="مثال: 101" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+                    <div><label class="block mb-1">رابط الصورة (URL):</label><input type="text" id="prodImageInput" placeholder="https://..." class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+                </div>
+                <div><label class="block mb-1 text-indigo-700">اسم المنتج (قابل للتعديل):</label><input type="text" id="prodNameInput" class="w-full bg-indigo-50 border border-indigo-300 text-indigo-900 rounded-xl p-2.5"></div>
+                <div><label class="block mb-1">الفئة:</label>
+                    <select id="prodCatInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5">
+                        <option value="بسكويت">بسكويت</option><option value="شيبس">شيبس</option><option value="عصائر ومشروبات">عصائر ومشروبات</option><option value="سكاكر وعلكة">سكاكر وعلكة</option><option value="قهوة">قهوة</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="block mb-1">سعر الشراء:</label><input type="number" id="prodCostInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+                    <!-- تم إخفاء حقل المخزون -->
+                    <input type="hidden" id="prodStockInput" value="9999">
+                </div>
+                <div class="grid grid-cols-2 gap-2 bg-amber-50 p-2 rounded-xl border border-amber-200">
+                    <div><label class="block mb-1 text-emerald-700">سعر التجزئة (المحل):</label><input type="number" id="prodRetailInput" class="w-full bg-white border border-emerald-300 text-emerald-900 rounded-xl p-2.5 font-black"></div>
+                    <div><label class="block mb-1 text-amber-700">سعر الجملة (الموزع):</label><input type="number" id="prodWholesaleInput" class="w-full bg-white border border-amber-300 text-amber-900 rounded-xl p-2.5 font-black"></div>
+                </div>
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="saveProduct()" class="flex-1 bg-ashour text-white py-2.5 rounded-xl font-bold text-xs hover:bg-ashour-dark">حفظ التعديلات</button>
+                <button onclick="closeProductModal()" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-xs">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Paste Modal -->
+    <div id="smartPasteModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-xl space-y-4">
+            <h3 class="text-lg font-black text-ashour">اللصق الذكي للمنتجات</h3>
+            <p class="text-xs text-gray-500">أدخل منتجاً في كل سطر: <b>الاسم , الفئة , التكلفة , التجزئة , الجملة , الكمية , الكود</b></p>
+            <textarea id="smartPasteText" rows="6" placeholder="بسكويت لوتس, بسكويت, 4000, 5000, 4500, 100, 101" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-3 text-xs font-mono"></textarea>
+            <div class="flex gap-2">
+                <button onclick="processSmartPaste()" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-indigo-700">إدخال الدفعة</button>
+                <button onclick="closeSmartPasteModal()" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-xs">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Receipt Modal -->
     <div id="receiptModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl relative my-8">
-            <button onclick="closeReceiptModal()" class="absolute left-4 top-4 text-gray-400 hover:text-gray-700 text-xl font-bold">&times;</button>
+            <button onclick="document.getElementById('receiptModal').classList.add('hidden')" class="absolute left-4 top-4 text-gray-400 hover:text-gray-700 text-xl font-bold">&times;</button>
             <div id="printableReceipt" class="p-2 font-mono text-xs text-black border border-dashed border-gray-300 bg-white">
                 <div class="text-center space-y-1 mb-3">
                     <h2 id="recStoreName" class="text-base font-black tracking-wider">مركز عاشور للجملة</h2>
@@ -371,48 +379,7 @@
             </div>
             <div class="mt-4 flex gap-2">
                 <button onclick="window.print()" class="flex-1 bg-ashour text-white py-2.5 rounded-xl font-bold text-xs hover:bg-ashour-dark transition"><i class="fa-solid fa-print"></i> طباعة</button>
-                <button onclick="closeReceiptModal()" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-xs hover:bg-gray-300 transition">إغلاق</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Product Modal -->
-    <div id="productModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <h3 id="productModalTitle" class="text-lg font-black text-ashour">إضافة منتج جديد</h3>
-            <input type="hidden" id="prodEditId">
-            <div class="space-y-3 text-xs font-bold">
-                <div><label class="block mb-1">اسم المنتج:</label><input type="text" id="prodNameInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-                <div><label class="block mb-1">الفئة:</label>
-                    <select id="prodCatInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5">
-                        <option value="بسكويت">بسكويت</option><option value="شيبس">شيبس</option><option value="عصائر">عصائر</option><option value="سكاكر وعلكة">سكاكر وعلكة</option><option value="مواد غذائية">مواد غذائية أخرى</option>
-                    </select>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div><label class="block mb-1">سعر الشراء:</label><input type="number" id="prodCostInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-                    <div><label class="block mb-1">المخزون:</label><input type="number" id="prodStockInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div><label class="block mb-1">سعر التجزئة:</label><input type="number" id="prodRetailInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-                    <div><label class="block mb-1">سعر الجملة:</label><input type="number" id="prodWholesaleInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-                </div>
-            </div>
-            <div class="flex gap-2 pt-2">
-                <button onclick="saveProduct()" class="flex-1 bg-ashour text-white py-2.5 rounded-xl font-bold text-xs hover:bg-ashour-dark">حفظ</button>
-                <button onclick="closeProductModal()" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-xs">إلغاء</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Smart Paste Modal -->
-    <div id="smartPasteModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-xl space-y-4">
-            <h3 class="text-lg font-black text-ashour">اللصق الذكي للمنتجات</h3>
-            <p class="text-xs text-gray-500">أدخل منتجاً في كل سطر: <b>الاسم , الفئة , التكلفة , التجزئة , الجملة , الكمية</b></p>
-            <textarea id="smartPasteText" rows="6" placeholder="بسكويت لوتس, بسكويت, 4000, 5000, 4500, 100" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-3 text-xs font-mono"></textarea>
-            <div class="flex gap-2">
-                <button onclick="processSmartPaste()" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-indigo-700">إدخال الدفعة</button>
-                <button onclick="closeSmartPasteModal()" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-xs">إلغاء</button>
+                <button onclick="document.getElementById('receiptModal').classList.add('hidden')" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-xs hover:bg-gray-300 transition">إغلاق</button>
             </div>
         </div>
     </div>
@@ -423,9 +390,7 @@
             <h3 class="text-lg font-black text-ashour">إضافة زبون جديد</h3>
             <div class="space-y-3 text-xs font-bold">
                 <div><label class="block mb-1">الاسم الثلاثي:</label><input type="text" id="clientNameInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-                <div><label class="block mb-1">نوع الزبون:</label>
-                    <select id="clientTypeInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"><option value="retail">عميل عادي (تجزئة)</option><option value="wholesale">موزع (جملة)</option></select>
-                </div>
+                <div><label class="block mb-1">نوع الزبون:</label><select id="clientTypeInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"><option value="retail">عميل عادي (تجزئة)</option><option value="wholesale">موزع (جملة)</option></select></div>
                 <div><label class="block mb-1">الهاتف:</label><input type="text" id="clientPhoneInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
                 <div><label class="block mb-1">العنوان:</label><input type="text" id="clientAddressInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
             </div>
@@ -436,7 +401,7 @@
         </div>
     </div>
 
-    <!-- Client Ledger Modal -->
+    <!-- Ledger Modal -->
     <div id="ledgerModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white rounded-2xl max-w-2xl w-full p-5 shadow-xl space-y-4 my-8">
             <div class="flex justify-between items-center border-b pb-3 border-gray-100">
@@ -459,45 +424,193 @@
         </div>
     </div>
 
-    <!-- Purchase Modal -->
-    <div id="purchaseModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4">
-            <h3 class="text-lg font-black text-ashour">تسجيل فاتورة شراء</h3>
-            <div class="space-y-3 text-xs font-bold">
-                <div><label class="block mb-1">المورد:</label><input type="text" id="purSupplierInput" placeholder="شركة الأهلية" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-                <div><label class="block mb-1">المنتج:</label><select id="purProductSelect" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></select></div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div><label class="block mb-1">الكمية:</label><input type="number" id="purQtyInput" value="100" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-                    <div><label class="block mb-1">تعديل التكلفة:</label><input type="number" id="purCostInput" placeholder="سعر جديد" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-                </div>
-            </div>
-            <div class="flex gap-2 pt-2">
-                <button onclick="savePurchase()" class="flex-1 bg-ashour text-white py-2.5 rounded-xl font-bold text-xs hover:bg-ashour-dark">إضافة الفاتورة</button>
-                <button onclick="closePurchaseModal()" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-xs">إلغاء</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Return Modal -->
-    <div id="returnModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4">
-            <h3 class="text-lg font-black text-red-700">تسجيل بضاعة مرتجعة</h3>
-            <div class="space-y-3 text-xs font-bold">
-                <div><label class="block mb-1">اختر الفاتورة الأصلية:</label><select id="retInvoiceSelect" onchange="onReturnInvoiceChange()" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"><option value="">-- اختر الفاتورة --</option></select></div>
-                <div><label class="block mb-1">المنتج المرتجع:</label><select id="retProductSelect" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5" disabled></select></div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div><label class="block mb-1">الكمية المرجعة:</label><input type="number" id="retQtyInput" value="1" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5" disabled></div>
-                    <div><label class="block mb-1">سعر الإرجاع (للوحدة):</label><input type="number" id="retPriceInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5" disabled></div>
-                </div>
-            </div>
-            <div class="flex gap-2 pt-2">
-                <button onclick="saveReturn()" class="flex-1 bg-red-600 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-red-700">خصم المرتجع وتعديل المخزون</button>
-                <button onclick="closeReturnModal()" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-xs">إلغاء</button>
-            </div>
-        </div>
-    </div>
-
     <script>
+        // ==========================================
+        // قائمة المنتجات المستوردة من موقعك (تم إخفاء الأسعار وجعلها 0)
+        // ==========================================
+        const IMPORTED_PRODUCTS = [
+            {"name": "اربيكا طبيعي صغير", "category": "شيبس", "image": "https://i.ibb.co/prfRDSvB/1791902542596.jpg"},
+            {"name": "اربيكا طبيعي جامبو", "category": "شيبس", "image": "https://i.ibb.co/jkfPR6Zy/1791902579906.jpg"},
+            {"name": "تورتيز رقائق كبير 100", "category": "شيبس", "image": "https://i.ibb.co/HftHvMKn/1791902790035.jpg"},
+            {"name": "تورتيز رقائق", "category": "شيبس", "image": "https://i.ibb.co/tprwmybw/1791902859760.jpg"},
+            {"name": "سبوكي كبير 100", "category": "شيبس", "image": "https://i.ibb.co/sp9QkV36/1791903052882.jpg"},
+            {"name": "عصير كرتون 20", "category": "عصائر ومشروبات", "image": "https://i.ibb.co/spmsT9X5/IMG-20261013-182914.jpg"},
+            {"name": "اوكتبوس كرنشي", "category": "شيبس", "image": "https://i.ibb.co/gLZD7snf/1791904125082.jpg"},
+            {"name": "قهوه سادة موكا 100g", "category": "قهوة", "image": "https://i.ibb.co/nqtNMzLC/1791904254279.jpg"},
+            {"name": "قهوه كلاسيك مع الهال 100g", "category": "قهوة", "image": "https://i.ibb.co/XrQ3VXwS/1791904056043.jpg"},
+            {"name": "قهوة إكسترا هال 200", "category": "قهوة", "image": "https://i.ibb.co/fVD0CKR7/1791903879220.jpg"},
+            {"name": "قهوة كلاسيك مع هال 200g", "category": "قهوة", "image": "https://i.ibb.co/tMN8CQV8/1791903944171.jpg"},
+            {"name": "توب فريش ساور", "category": "سكاكر وعلكة", "image": "https://i.ibb.co/WpqwK1ck/1791903820791.jpg"},
+            {"name": "كب كيك", "category": "بسكويت", "image": "https://i.ibb.co/nsycQxjt/1791903716293.jpg"},
+            {"name": "حنجور شوكالا", "category": "بسكويت", "image": "https://i.ibb.co/0ytgJQfs/1791903474769.jpg"},
+            {"name": "بسكويت ماتيلدا دارك", "category": "بسكويت", "image": "https://i.ibb.co/kstdRSFM/1791903353015.jpg"},
+            {"name": "بسكويت كريمة", "category": "بسكويت", "image": "https://i.ibb.co/3YzGPXG1/1791903548491.jpg"},
+            {"name": "سلسيتو مالح", "category": "بسكويت", "image": "https://i.ibb.co/v4B35jZL/1791901832099.jpg"},
+            {"name": "بسكوت مي تو", "category": "بسكويت", "image": "https://i.ibb.co/5hY32Jrn/1791903416991.jpg"},
+            {"name": "بسكويت تاندا", "category": "بسكويت", "image": "https://i.ibb.co/yFqzzqSX/1791903201147.jpg"},
+            {"name": "قهوه اكسترا هال 100g", "category": "قهوة", "image": "https://i.ibb.co/1fhpsGzS/1791904344535.jpg"},
+            {"name": "جنتي شوكو كرنش", "category": "بسكويت", "image": "https://i.ibb.co/d4k8rL2Y/1791299905439.jpg"},
+            {"name": "جنتي هم هم", "category": "بسكويت", "image": "https://i.ibb.co/dzWDKvZ/1791299825266.jpg"},
+            {"name": "سلسيتو بسكويت مالح مع الزعتر", "category": "بسكويت", "image": "https://i.ibb.co/ycYcHL8Z/1791302658954.jpg"},
+            {"name": "ديجيستيف امية كلاس", "category": "بسكويت", "image": "https://i.ibb.co/CsWKrjZX/1791299650004.jpg"},
+            {"name": "زنجيرز كيك", "category": "بسكويت", "image": "https://i.ibb.co/1YRnQD3B/1791299482629.jpg"},
+            {"name": "بسكوت اورينو 4 حبات", "category": "بسكويت", "image": "https://i.ibb.co/8ndm1FYy/1791299473026.jpg"},
+            {"name": "رولانا 1 حبه", "category": "بسكويت", "image": "https://i.ibb.co/TBYPhsq0/1791302413005.jpg"},
+            {"name": "شوكالا فيوري", "category": "بسكويت", "image": "https://i.ibb.co/NnTrRRSQ/1791299626960.jpg"},
+            {"name": "دارنيتو إكس فورتين جامبو", "category": "شيبس", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/5d0bc848-135d-45c8-8f09-4a47b5f318cc.jpg"},
+            {"name": "دارنيتو إكس فورتين", "category": "شيبس", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/5d0bc848-135d-45c8-8f09-4a47b5f318cc.jpg"},
+            {"name": "دارنيتو فور", "category": "شيبس", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/6b96b4ee-72b2-40c6-a0f4-101b47d073bf.jpg"},
+            {"name": "دارنيتو طبيعي صغير", "category": "شيبس", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/d6f994c0-4dcb-4e7a-8dc2-5bd2428ac27e.jpg"},
+            {"name": "دارنيتو طبيعي جامبو", "category": "شيبس", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/39429b71-d1a0-4e96-9ab7-e7b0682757ce.jpg"},
+            {"name": "دارنيتو توركس", "category": "شيبس", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/1abadd2a-862c-49ca-bc5e-5f12230f7248.jpg"},
+            {"name": "دارنيتو بوشار جامبو", "category": "شيبس", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/a512e410-371f-442f-9919-2f5d1702b1f1.jpg"},
+            {"name": "شيبتوز صغير", "category": "شيبس", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/343b0fb2-a7e9-4a2d-84b9-342185ab3852.jpg"},
+            {"name": "شيبتوز كبير 3", "category": "شيبس", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/b6520bdb-74bc-4d5a-b66e-7a124cb3415c.jpg"},
+            {"name": "برنس بوب كورن بوشار", "category": "شيبس", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/f3eab4b1-f7d8-46c3-92db-2745845bf938.jpg"},
+            {"name": "غولدن تاتش صغير 1", "category": "شيبس", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/343b0fb2-a7e9-4a2d-84b9-342185ab3852.jpg"},
+            {"name": "شيبسو طبيعي 1", "category": "شيبس", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/ac96aa6d-729a-4a79-85ec-708e6a4411da.jpg"},
+            {"name": "كرسبيانا رقائق", "category": "شيبس", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/1428edb8-5ae7-49b7-a799-90c5aa25ebc8.jpg"},
+            {"name": "رقائق شير إت", "category": "شيبس", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/e11ee754-c75d-42a5-a130-8a0b4baf0b30.jpg"},
+            {"name": "شيبس لاند 1 كغ", "category": "شيبس", "image": "https://i.ibb.co/JgHjMKt/17903702848272298161631129192310.jpg"},
+            {"name": "لب بذر دوار الشمس", "category": "شيبس", "image": "https://i.ibb.co/HDf6Y2JD/IMG-20260926-184721.jpg"},
+            {"name": "سيما بسكوت ساده 10", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/61e95e88-a71e-481a-bf7d-35de2ae63837.jpg"},
+            {"name": "سيما بسكوت ساده 30", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/23bb1eac-1716-4f2c-abcb-d3767dfd79ce.jpg"},
+            {"name": "بسكوت جوفريك", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/d86767f3-ff88-43d4-a651-77c148a27376.jpg"},
+            {"name": "بسكوت دوتي اورجينال", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/55190367-4e95-4961-851e-6120c3e79fbe.jpg"},
+            {"name": "توب كورفيت", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/90cd111b-1524-49db-95e7-b900bce309aa.jpg"},
+            {"name": "بسكويت ون تكة", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/80c07491-b593-4e6c-9291-775202827105.jpg"},
+            {"name": "بسكوت جنتي ميلكو", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/0ddfe5be-b7b7-45e5-ac9b-35ddd245a127.jpg"},
+            {"name": "بسكوت جنتي شينكي", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/b1bad1c8-ed34-40b3-b4d2-3bbbe55a1a67.jpg"},
+            {"name": "بسكوت جنتي كراميلو", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/c5007541-df2f-4272-bf1a-b805fb0e4dd3.jpg"},
+            {"name": "بسكوت جنتي صباح عجوة", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/0db07e26-8916-4fc0-bd23-353e65049bac.jpg"},
+            {"name": "بسكوت جنتي موندو بريميوم", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/3a6c2e9c-aec4-4ab2-83c1-dadf45ba6f89.jpg"},
+            {"name": "بسكوت واوو كريمز بنكهة الفريز", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/79537fec-cb1a-4ed6-833f-d73dbedd086c.jpg"},
+            {"name": "بسكوت واوو كريمز بنكهة الشوكالا", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/fc34fa82-bb67-4b7e-956b-b26ff80ee89f.jpg"},
+            {"name": "بسكوت واوو كريمز بنكهة الحليب", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/c291b8b0-558e-4d64-b82a-5d03b9f8ee61.jpg"},
+            {"name": "بسكوت واوو كريمز بنكهة البرتقال", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/4e8be666-0446-402e-9519-d908815032b4.jpg"},
+            {"name": "بسكوت واوو كريمز بنكهة الجوز هند", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/effc22e9-ff16-4fa4-92b1-ef3398141409.jpg"},
+            {"name": "بسكوت واوو كريمز بنكهة الفانيلا", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/1f8bdc92-5680-4fe5-9581-d7a34274dece.jpg"},
+            {"name": "سوبر اردو شوكالا", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/779afa82-3895-404d-ad2b-3637c0a31f9d.jpg"},
+            {"name": "سوبر اردو حليب", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/779afa82-3895-404d-ad2b-3637c0a31f9d.jpg"},
+            {"name": "كيكتي الكاكاو بالحليب", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/04bd5cf4-ce75-4861-be7d-7c46dcd8b422.jpg"},
+            {"name": "كيكتي فانيلا بالشوكالا", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/7e6494b9-e2a4-48f6-a771-7ee0f8f44104.jpg"},
+            {"name": "كيكتي بالفريز", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/b192d6f7-9ec4-4860-bb40-0f26a3171d74.jpg"},
+            {"name": "كيكتي كاكاو بالشوكالا", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/0859f52d-a93a-4985-98f9-0cbc37eff590.jpg"},
+            {"name": "كيكتي فانيلا بالحليب", "category": "بسكويت", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/f80c1fc8-081a-499a-b386-4f3d11e57fcc.jpg"},
+            {"name": "بسكوت اردو حليب", "category": "بسكويت", "image": "https://iili.io/naG7v2V.jpg"},
+            {"name": "سلفيتو بسكويت الكاكاو", "category": "بسكويت", "image": "https://i.ibb.co/HLcS6Xsy/17903738068056955385858921003623.jpg"},
+            {"name": "برنسيس مكسرات ٤", "category": "بسكويت", "image": "https://i.ibb.co/PZ69Rrbx/17903740632248857959363517203127-1.png"},
+            {"name": "سلفيتو لايت اوجينال 2", "category": "بسكويت", "image": "https://i.ibb.co/dsPxpYHq/17903736794202118061813671613481.jpg"},
+            {"name": "بسكوت البشير مي تو", "category": "بسكويت", "image": "https://i.ibb.co/8DHXshfb/17903736200207503086660731698315.jpg"},
+            {"name": "بسكوت رالاس", "category": "بسكويت", "image": "https://i.ibb.co/MDy7N7dC/FB-IMG-1790022842708.jpg"},
+            {"name": "رالاس لوس بجوز الهند", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/8qxxZXWw.jpg"},
+            {"name": "رالاس نوغاتي بنكهة الفستق", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/14MJqgCFi.jpg"},
+            {"name": "اورلي الفاخر", "category": "بسكويت", "image": "https://cdn.phototourl.com/member/2026-09-21-4b977406-e9cb-4213-8d0e-298bdaf164d6.jpg"},
+            {"name": "تشيلو new plus", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/0XyvaYfO.jpg"},
+            {"name": "دريم لاند 8 قطع", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/Q6kPsr62.jpg"},
+            {"name": "دريم لاند 4 قطع", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/L8rAVpMz.jpg"},
+            {"name": "رولانا", "category": "بسكويت", "image": "https://i.ibb.co/h1sHXFFy/Screenshot-2026-09-25-13-14-43-445-com-miui-gallery.jpg"},
+            {"name": "بونو سوبر سندويش", "category": "بسكويت", "image": "https://i.ibb.co/VWTLKYqn/Screenshot-2026-09-25-13-14-45-281-com-miui-gallery.jpg"},
+            {"name": "بونو كيك", "category": "بسكويت", "image": "https://i.ibb.co/DP1qkS1v/Screenshot-2026-09-25-13-16-05-265-com-miui-gallery.jpg"},
+            {"name": "بونو رول", "category": "بسكويت", "image": "https://i.ibb.co/HfwBVnRK/Screenshot-2026-09-25-13-16-00-510-com-miui-gallery.jpg"},
+            {"name": "بونو ستار", "category": "بسكويت", "image": "https://i.ibb.co/ymNh4ykW/Screenshot-2026-09-25-13-14-46-861-com-miui-gallery.jpg"},
+            {"name": "كاندي بونو", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/8YvI8Mem.jpg"},
+            {"name": "ماكس تايم", "category": "بسكويت", "image": "https://i.ibb.co/DyMcLFS/17903712582651060331576293546049.jpg"},
+            {"name": "بونو فرويت", "category": "بسكويت", "image": "https://i.ibb.co/4RwS0XsV/Screenshot-2026-09-25-13-15-30-438-com-miui-gallery.jpg"},
+            {"name": "بونو شوكو ستار", "category": "بسكويت", "image": "https://i.ibb.co/VWvGf0x0/Screenshot-2026-09-25-13-14-57-426-com-miui-gallery.jpg"},
+            {"name": "فيريتيكس اكسترا", "category": "بسكويت", "image": "https://i.ibb.co/FP0tJvb/Screenshot-2026-09-25-13-14-54-406-com-miui-gallery.jpg"},
+            {"name": "فيريتيكس ويفر", "category": "بسكويت", "image": "https://i.ibb.co/MxZD29G6/1790371805850941167294567130987.jpg"},
+            {"name": "جيلي كوب كارز", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/ZwDfFoLT.jpg"},
+            {"name": "بسكوت ب ب حليب", "category": "بسكويت", "image": "https://i.ibb.co/fVNbbn1R/8750838381737369895.jpg"},
+            {"name": "بسكوت كرات دوتي", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/1cPBkdNd.jpg"},
+            {"name": "فيرونا", "category": "بسكويت", "image": "https://i.ibb.co/1YNV05Gq/17904429282789014769229668770185.png"},
+            {"name": "اولغاكيك", "category": "بسكويت", "image": "https://i.ibb.co/jZMtkKp6/17904425677595787193787746379974.jpg"},
+            {"name": "بريك ستا BREAKSTA", "category": "بسكويت", "image": "https://i.ibb.co/93swPjnW/17904424529327407959265093845926.jpg"},
+            {"name": "هابي بريك HAPPY BREAK", "category": "بسكويت", "image": "https://i.ibb.co/twzYcr17/17904423362355578928225400528793.jpg"},
+            {"name": "BREAK بريك", "category": "بسكويت", "image": "https://i.ibb.co/mryBB5LP/17904423723973625622582965508116.jpg"},
+            {"name": "BREAK RizzO بريك ريززو", "category": "بسكويت", "image": "https://i.ibb.co/N6m5qSHL/17904424143824756185479364185135.jpg"},
+            {"name": "بريك تايم BREAK TAME", "category": "بسكويت", "image": "https://i.ibb.co/sp4m0Q8b/17905929216896339156630970980871.jpg"},
+            {"name": "بسكوت دوتي طبقتين", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/XNps9Bll.jpg"},
+            {"name": "Cookmealy كرات شوكالا", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/16ztQ2jcr.jpg"},
+            {"name": "سميري دريم", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/CsWfN2Vz.jpg"},
+            {"name": "باك باك شوكالا", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/8LNtVsj5.jpg"},
+            {"name": "شوكالا عمار الواح", "category": "بسكويت", "image": "https://i.ibb.co/4g9gwYqS/Screenshot-2026-09-25-13-15-40-410-com-miui-gallery.jpg"},
+            {"name": "كاندي بار", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/1h7VUDYCn.jpg"},
+            {"name": "سنوكا", "category": "بسكويت", "image": "https://i.ibb.co/MDRxZfSx/17904412156244285410235850770404.jpg"},
+            {"name": "3 ميني سويس رول", "category": "بسكويت", "image": "https://i.ibb.co/hxV0RJNc/17905913926648324840449697070687.jpg"},
+            {"name": "موفيندو كيك", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/C2LntUpB.jpg"},
+            {"name": "دونيستا", "category": "بسكويت", "image": "https://i.ibb.co/GQ4CSd2T/1790372259410554768854533607412.jpg"},
+            {"name": "قمح منفوش", "category": "بسكويت", "image": "https://i.ibb.co/zTdwsNSs/Screenshot-2026-09-25-13-15-38-975-com-miui-gallery.jpg"},
+            {"name": "الأرض السعيده (بيض)", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/18ALkvyF5.jpg"},
+            {"name": "اصابع كراكس مالح", "category": "بسكويت", "image": "https://i.ibb.co/39jk4Nnx/Screenshot-2026-09-25-13-15-33-139-com-miui-gallery.jpg"},
+            {"name": "بيتي فور جادو", "category": "بسكويت", "image": "https://i.ibb.co/xKCrVC5S/IMG-20260922-111134.jpg"},
+            {"name": "ماكس كيك", "category": "بسكويت", "image": "https://i.ibb.co/LhBdX5Fg/17903725334783146645917184836359.jpg"},
+            {"name": "كراكيب شوكالا", "category": "بسكويت", "image": "https://i.ibb.co/HLNN1CCL/IMG-20260926-164644.jpg"},
+            {"name": "سلفيتو شاي", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/55CIY6ul.jpg"},
+            {"name": "سلفيتو جوز هند", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/UIBCL61n.jpg"},
+            {"name": "سلسيتو بسكوت مالح كراكرز", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/8hRqS8Xr.jpg"},
+            {"name": "توت توت ويفر بسكوت", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/3wfPw4HB.jpg"},
+            {"name": "عجوة بالتمر", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/vDXMHKSX.jpg"},
+            {"name": "توت توت اكياس بسكوت والعاب", "category": "بسكويت", "image": "https://cdn.imagetourls.com/uploads/tyImg/1czj9UhD8.jpg"},
+            {"name": "كوكو موندو", "category": "بسكويت", "image": "https://i.ibb.co/gLGfB9JW/Screenshot-2026-09-25-14-05-21-203-com-miui-gallery.jpg"},
+            {"name": "كروسان برشا", "category": "بسكويت", "image": "https://i.ibb.co/23CPVBGR/images-36.jpg"},
+            {"name": "كرات الشوكالا", "category": "بسكويت", "image": "https://i.ibb.co/ZztZ5XMV/IMG-20260926-164651.jpg"},
+            {"name": "ارغو شوكالا", "category": "بسكويت", "image": "https://i.ibb.co/PGGmjkVG/IMG-20260928-133324.jpg"},
+            {"name": "بسكوت شوكو ليغهيت", "category": "بسكويت", "image": "https://i.ibb.co/fV25TKQb/IMG-20260926-184507.jpg"},
+            {"name": "Show اصابع شوكالا", "category": "بسكويت", "image": "https://i.ibb.co/4ZFhgd1C/IMG-20260928-184917.jpg"},
+            {"name": "جادو اصابع شوكالا", "category": "بسكويت", "image": "https://i.ibb.co/1fQyZt6x/IMG-20260926-184750.jpg"},
+            {"name": "بيتي فور", "category": "بسكويت", "image": "https://i.ibb.co/rKjWFWnn/IMG-20260922-172909.jpg"},
+            {"name": "بسكويت فور يو", "category": "بسكويت", "image": "https://i.ibb.co/xqw4NVw9/IMG-20260928-122756.jpg"},
+            {"name": "شيف كيك", "category": "بسكويت", "image": "https://i.ibb.co/cKnwS42h/IMG-20260928-133219.jpg"},
+            {"name": "فيرتيكا كافية شوكالا", "category": "قهوة", "image": "https://i.supaimg.com/bf889966-14fa-434d-a73a-0e1112e517ba/40fdd0c4-02d8-4f56-a64e-5507656bc4cf.jpg"},
+            {"name": "فيرتيكا قهوة", "category": "قهوة", "image": "https://i.ibb.co/SXWTSbRX/17903727102627557644378252862299.jpg"},
+            {"name": "بن الحموي غلوة", "category": "قهوة", "image": "https://cdn.imagetourls.com/uploads/tyImg/15wi7WbUd.jpg"},
+            {"name": "سيتي كافية كابتشينو 3-1", "category": "قهوة", "image": "https://cdn.imagetourls.com/uploads/tyImg/47R6LSNN.jpg"},
+            {"name": "سيتي كافية سريعه", "category": "قهوة", "image": "https://cdn.imagetourls.com/uploads/tyImg/PduMcSIL.jpg"},
+            {"name": "سيتي كافية قهوة كريمي", "category": "قهوة", "image": "https://cdn.imagetourls.com/uploads/tyImg/19LpobZMk.jpg"},
+            {"name": "سيتي كافية قهوة كريمي سكر 3-1", "category": "قهوة", "image": "https://cdn.imagetourls.com/uploads/tyImg/pDfeQ4s9.jpg"},
+            {"name": "قهوة سريعه بالهال الطبيعي", "category": "قهوة", "image": "https://cdn.imagetourls.com/uploads/tyImg/v5tsOer9.jpg"},
+            {"name": "بن الحموي قهوه اكسترا هال 100g", "category": "قهوة", "image": "https://cdn.imagetourls.com/uploads/tyImg/18GOqOAv1.jpg"},
+            {"name": "سيتي كافية 2-1 قهوه كريمي بدون سكر", "category": "قهوة", "image": "https://cdn.imagetourls.com/uploads/tyImg/DflkPmmo.jpg"},
+            {"name": "سيتي شوكالا شراب الشوكالا", "category": "قهوة", "image": "https://cdn.imagetourls.com/uploads/tyImg/jZprrtND.jpg"},
+            {"name": "سيتي كافيه غولد", "category": "قهوة", "image": "https://cdn.imagetourls.com/uploads/tyImg/Wm6tKueS.jpg"},
+            {"name": "سيتي كافية باردة أورجينال", "category": "قهوة", "image": "https://i.ibb.co/Pvsw59HV/17905881015137144588691901690419.jpg"},
+            {"name": "سيتي كافية باردة موكا", "category": "قهوة", "image": "https://i.ibb.co/fwRN44d/17905881539073259721267290530679.jpg"},
+            {"name": "علكة ليمون كرات", "category": "سكاكر وعلكة", "image": "https://cdn.imagetourls.com/uploads/tyImg/qNiq1nDC.jpg"},
+            {"name": "ليكي ريكو مكس شريطه", "category": "سكاكر وعلكة", "image": "https://cdn.imagetourls.com/uploads/tyImg/18WZ0qFWP.jpg"},
+            {"name": "شريطة جيجي مكس", "category": "سكاكر وعلكة", "image": "https://cdn.imagetourls.com/uploads/tyImg/6u3RFf7y.jpg"},
+            {"name": "اسكا البكتين", "category": "سكاكر وعلكة", "image": "https://cdn.imagetourls.com/uploads/tyImg/1aZA0Hw2J.jpg"},
+            {"name": "سميري سكاكر", "category": "سكاكر وعلكة", "image": "https://cdn.imagetourls.com/uploads/tyImg/181LBUdQ8.jpg"},
+            {"name": "زاهي سكاكر", "category": "سكاكر وعلكة", "image": "https://cdn.imagetourls.com/uploads/tyImg/JtadpQ2B.jpg"},
+            {"name": "مصاص", "category": "سكاكر وعلكة", "image": "https://cdn.imagetourls.com/uploads/tyImg/3TWLLj3S.jpg"},
+            {"name": "علكة نغومة", "category": "سكاكر وعلكة", "image": "https://cdn.imagetourls.com/uploads/tyImg/NUIV1LwD.jpg"},
+            {"name": "كلاسيس", "category": "سكاكر وعلكة", "image": "https://cdn.imagetourls.com/uploads/tyImg/2rZqt1V3.jpg"},
+            {"name": "بات بوي علكة 500", "category": "سكاكر وعلكة", "image": "https://cdn.imagetourls.com/uploads/tyImg/o8oKZJYm.jpg"},
+            {"name": "علكة الاكرمي", "category": "سكاكر وعلكة", "image": "https://cdn.imagetourls.com/uploads/tyImg/Xzqy9WIa.jpg"},
+            {"name": "علكة مانكو", "category": "سكاكر وعلكة", "image": "https://cdn.imagetourls.com/uploads/tyImg/0DEWHvRp.jpg"},
+            {"name": "سكاكر بورسيشن", "category": "سكاكر وعلكة", "image": "https://cdn.imagetourls.com/uploads/tyImg/h2DGQJv0.jpg"},
+            {"name": "ميسون علكة", "category": "سكاكر وعلكة", "image": "https://cdn.imagetourls.com/uploads/tyImg/3W1u4pl9.jpg"},
+            {"name": "علكة شيفتو", "category": "سكاكر وعلكة", "image": "https://cdn.imagetourls.com/uploads/tyImg/gbvi5caz.jpg"},
+            {"name": "سمارة علكة", "category": "سكاكر وعلكة", "image": "https://cdn.imagetourls.com/uploads/tyImg/cpddVUTs.jpg"},
+            {"name": "بيض داخلها العاب", "category": "سكاكر وعلكة", "image": "https://i.ibb.co/VYmrhySQ/IMG-20260926-164613.jpg"},
+            {"name": "لعبه تلفون", "category": "سكاكر وعلكة", "image": "https://i.ibb.co/xy29Wkm/IMG-20260926-164601.jpg"},
+            {"name": "سيارة وعلكة", "category": "سكاكر وعلكة", "image": "https://i.ibb.co/3yWHJqks/IMG-20260926-164547.jpg"},
+            {"name": "العاب عيون", "category": "سكاكر وعلكة", "image": "https://i.ibb.co/nMx3hSQn/IMG-20260928-124707.jpg"},
+            {"name": "رول اب علكة متر", "category": "سكاكر وعلكة", "image": "https://i.ibb.co/SDbXdWbT/IMG-20260930-145107.jpg"},
+            {"name": "ببرونه جيلي", "category": "سكاكر وعلكة", "image": "https://i.ibb.co/MkWcx0q4/IMG-20260930-145130.jpg"},
+            {"name": "تلفون لعبه", "category": "سكاكر وعلكة", "image": "https://i.ibb.co/DHc56gLy/IMG-20260930-145802.jpg"},
+            {"name": "شراب الكاكو", "category": "عصائر ومشروبات", "image": "https://cdn.imagetourls.com/uploads/tyImg/18eRJWhq5.jpg"},
+            {"name": "وينر عصير ظروف", "category": "عصائر ومشروبات", "image": "https://i.ibb.co/rffC64T5/1790372888210222678566786498719.jpg"},
+            {"name": "ياهلا عصير ظروف", "category": "عصائر ومشروبات", "image": "https://i.ibb.co/tpCFhwYK/17903731735848470869604031728209.jpg"},
+            {"name": "فيرتيكا عصير ظروف", "category": "عصائر ومشروبات", "image": "https://i.ibb.co/cSSq548F/17903729980237394353446570947858.jpg"},
+            {"name": "لجين حليب", "category": "عصائر ومشروبات", "image": "https://cdn.imagetourls.com/uploads/tyImg/ffPIHygJ.jpg"},
+            {"name": "تويتي حليب", "category": "عصائر ومشروبات", "image": "https://cdn.imagetourls.com/uploads/tyImg/4soMfmED.jpg"},
+            {"name": "سولو عصير", "category": "عصائر ومشروبات", "image": "https://cdn.imagetourls.com/uploads/tyImg/69w6ahLa.jpg"},
+            {"name": "كولا مشروب غازي", "category": "عصائر ومشروبات", "image": "https://cdn.imagetourls.com/uploads/tyImg/11JBRDiVw.jpg"},
+            {"name": "كاكاو الفائز", "category": "عصائر ومشروبات", "image": "https://i.ibb.co/3yhkwSjL/IMG-20260928-124537.jpg"},
+            {"name": "عصير جيلي رماز", "category": "عصائر ومشروبات", "image": "https://i.ibb.co/mVfkL7rG/IMG-20260928-124421.jpg"}
+        ];
+
         let state = {
             pin: '1234',
             storeInfo: { name: 'مركز عاشور للجملة', phone: '0991234567', reg: '45892', tax: '123456789', address: 'السوق المركزي - صالة الجملة' },
@@ -508,26 +621,15 @@
         let autoLockTimer;
         function resetAutoLock() {
             clearTimeout(autoLockTimer);
-            // قفل تلقائي بعد 5 دقائق (300000 مللي ثانية)
             autoLockTimer = setTimeout(() => {
                 if(!document.getElementById('pinOverlay').classList.contains('hidden')) return;
                 lockApp();
-            }, 300000);
+            }, 300000); 
         }
-
-        const DEMO_PRODUCTS = [
-            { id: '1', name: 'بسكويت ديمة شوكولا', category: 'بسكويت', cost: 1200, retailPrice: 1500, wholesalePrice: 1350, stock: 150 },
-            { id: '2', name: 'شيبس درامز فلفل', category: 'شيبس', cost: 800, retailPrice: 1000, wholesalePrice: 900, stock: 80 },
-            { id: '3', name: 'عصير راني مانجو 250مل', category: 'عصائر', cost: 2000, retailPrice: 2500, wholesalePrice: 2200, stock: 200 },
-            { id: '4', name: 'علكة سهام نعناع', category: 'سكاكر وعلكة', cost: 400, retailPrice: 500, wholesalePrice: 450, stock: 8 },
-            { id: '5', name: 'سردين الأطلسي زيت', category: 'مواد غذائية', cost: 3500, retailPrice: 4500, wholesalePrice: 4000, stock: 45 },
-            { id: '6', name: 'رز الشعلان 5كغ', category: 'مواد غذائية', cost: 45000, retailPrice: 52000, wholesalePrice: 48000, stock: 12 }
-        ];
 
         const DEMO_CLIENTS = [
             { id: 'c1', name: 'زبون نقدي مباشر', type: 'retail', phone: '-', address: '-', debt: 0 },
-            { id: 'c2', name: 'سوبرماركت البركة (موزع)', type: 'wholesale', phone: '0998877665', address: 'شارع التجارة', debt: 150000 },
-            { id: 'c3', name: 'محل النور للغذائيات', type: 'wholesale', phone: '0933445566', address: 'السوق القديم', debt: 45000 }
+            { id: 'c2', name: 'سوبرماركت البركة (موزع)', type: 'wholesale', phone: '0998877665', address: 'شارع التجارة', debt: 150000 }
         ];
 
         window.onload = function() {
@@ -538,24 +640,28 @@
         };
 
         function loadFromStorage() {
-            const saved = localStorage.getItem('ashour_pos_db_v3');
+            const saved = localStorage.getItem('ashour_pos_db_v6');
             if (saved) {
-                try {
-                    state = JSON.parse(saved);
-                    if(!state.storeInfo) state.storeInfo = { name: 'مركز عاشور للجملة', phone: '0991234567', reg: '45892', tax: '123456789', address: 'السوق المركزي' };
-                } catch(e) { loadDefaults(); }
+                try { state = JSON.parse(saved); } catch(e) { loadDefaults(); }
             } else { loadDefaults(); }
         }
 
         function loadDefaults() {
-            state.products = JSON.parse(JSON.stringify(DEMO_PRODUCTS));
+            state.products = IMPORTED_PRODUCTS.map((p, i) => ({
+                id: (i + 1).toString(),
+                sku: (101 + i).toString(),
+                name: p.name,
+                category: p.category,
+                cost: 0, retailPrice: 0, wholesalePrice: 0,
+                stock: 9999, // مخزون كبير وهمي
+                image: p.image || ''
+            }));
             state.clients = JSON.parse(JSON.stringify(DEMO_CLIENTS));
-            state.invoices = []; state.purchases = []; state.returns = [];
-            state.auditLog = [{ date: new Date().toLocaleString('ar-SY'), type: 'النظام', details: 'تهيئة النظام', status: 'مكتمل' }];
+            state.invoices = []; state.auditLog = [{ date: new Date().toLocaleString('ar-SY'), type: 'النظام', details: 'تم استيراد المنتجات بنجاح', status: 'مكتمل' }];
             saveToStorage();
         }
 
-        function saveToStorage() { localStorage.setItem('ashour_pos_db_v3', JSON.stringify(state)); }
+        function saveToStorage() { localStorage.setItem('ashour_pos_db_v6', JSON.stringify(state)); }
 
         function logAudit(type, details) {
             state.auditLog.unshift({ date: new Date().toLocaleString('ar-SY'), type: type, details: details, status: 'مسجل' });
@@ -586,9 +692,7 @@
             else { document.getElementById('pinError').classList.remove('hidden'); clearPin(); }
         }
         function lockApp() { 
-            document.getElementById('pinOverlay').classList.remove('hidden'); 
-            clearPin();
-            document.getElementById('pinError').classList.add('hidden');
+            document.getElementById('pinOverlay').classList.remove('hidden'); clearPin(); document.getElementById('pinError').classList.add('hidden');
         }
 
         // DASHBOARD
@@ -596,48 +700,84 @@
             let todaySales = 0, todayProfit = 0;
             state.invoices.forEach(inv => { todaySales += inv.total; todayProfit += (inv.profit || 0); });
             let totalDebts = state.clients.reduce((acc, c) => acc + (c.debt || 0), 0);
-            let lowStockCount = state.products.filter(p => p.stock < 10).length;
-
+            
             document.getElementById('kpiSales').innerText = todaySales.toLocaleString() + ' ل.س';
             document.getElementById('kpiProfit').innerText = todayProfit.toLocaleString() + ' ل.س';
             document.getElementById('kpiDebts').innerText = totalDebts.toLocaleString() + ' ل.س';
-            document.getElementById('kpiLowStock').innerText = lowStockCount + ' أصناف';
         }
 
         // POS
         function initPOSCategories() {
-            const categories = ['الكل', 'بسكويت', 'شيبس', 'عصائر', 'سكاكر وعلكة', 'مواد غذائية'];
+            const categories = ['الكل', 'بسكويت', 'شيبس', 'عصائر ومشروبات', 'سكاكر وعلكة', 'قهوة'];
             document.getElementById('posCategoryFilter').innerHTML = categories.map(cat => `
                 <button onclick="setPosCat('${cat}')" class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${state.selectedPosCategory === cat ? 'bg-ashour text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">${cat}</button>
             `).join('');
         }
         function setPosCat(cat) { state.selectedPosCategory = cat; initPOSCategories(); renderPosProducts(); }
         
-        // MODIFIED: HIDDEN STOCK QUANTITY
         function renderPosProducts() {
             const search = document.getElementById('posSearch').value.toLowerCase();
             const filtered = state.products.filter(p => {
                 const matchCat = state.selectedPosCategory === 'الكل' || p.category === state.selectedPosCategory;
-                return matchCat && p.name.toLowerCase().includes(search);
+                const matchSearch = p.name.toLowerCase().includes(search) || (p.sku && p.sku.includes(search));
+                return matchCat && matchSearch;
             });
             const selectedClient = getSelectedPosClient();
             const priceKey = selectedClient.type === 'wholesale' ? 'wholesalePrice' : 'retailPrice';
 
             document.getElementById('posProductsGrid').innerHTML = filtered.map(p => `
-                <div onclick="addToCart('${p.id}')" class="bg-white border hover:border-ashour p-3 rounded-2xl shadow-sm cursor-pointer transition flex flex-col justify-between relative group border-gray-200">
-                    <div>
-                        <span class="text-[10px] text-gray-400 font-bold block">${p.category}</span>
-                        <h4 class="font-black text-sm text-gray-800 line-clamp-2 leading-tight">${p.name}</h4>
-                    </div>
-                    <div class="mt-3 flex items-end justify-between border-t border-gray-100 pt-2">
-                        <div>
-                            <span class="text-xs text-ashour font-black block">${p[priceKey].toLocaleString()} ل.س</span>
-                            <!-- تم إخفاء كمية المخزون بناءً على طلبك -->
+                <div onclick="addToCart('${p.id}')" class="bg-white border hover:border-ashour p-2.5 rounded-2xl shadow-sm cursor-pointer transition flex flex-col justify-between relative group border-gray-200">
+                    
+                    <!-- زر التعديل -->
+                    <button onclick="event.stopPropagation(); openProductModal('${p.id}')" class="absolute top-2 left-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white w-7 h-7 rounded-full flex items-center justify-center z-10 shadow-sm transition" title="تعديل الاسم والسعر">
+                        <i class="fa-solid fa-pen text-[10px]"></i>
+                    </button>
+
+                    <div class="flex gap-2 items-start">
+                        <img src="${p.image || 'https://placehold.co/100x100?text=صورة'}" class="w-12 h-12 rounded-lg object-cover bg-gray-100 border border-gray-200 flex-shrink-0">
+                        <div class="flex-grow">
+                            <span class="text-[10px] text-ashour font-black block bg-ashour/10 w-fit px-1.5 rounded">كود: ${p.sku || '-'}</span>
+                            <h4 class="font-black text-xs text-gray-800 line-clamp-2 leading-tight mt-1">${p.name}</h4>
                         </div>
-                        <div class="w-7 h-7 bg-ashour/10 text-ashour rounded-lg flex items-center justify-center group-hover:bg-ashour group-hover:text-white transition"><i class="fa-solid fa-plus text-xs"></i></div>
+                    </div>
+                    <div class="mt-2 flex items-end justify-between border-t border-gray-100 pt-2">
+                        <span class="text-xs ${p[priceKey] > 0 ? 'text-ashour font-black' : 'text-red-500 font-bold'}">${p[priceKey] > 0 ? p[priceKey].toLocaleString() + ' ل.س' : 'حدد السعر'}</span>
+                        <div class="w-6 h-6 bg-ashour/10 text-ashour rounded-md flex items-center justify-center group-hover:bg-ashour group-hover:text-white transition"><i class="fa-solid fa-plus text-xs"></i></div>
                     </div>
                 </div>
             `).join('');
+        }
+
+        function handleQuickEntry(event) {
+            if (event.key === 'Enter') {
+                const input = event.target;
+                const val = input.value.trim();
+                if (!val) return;
+                const parts = val.split('*');
+                if (parts.length === 2) {
+                    const sku = parts[0].trim();
+                    const qty = parseInt(parts[1].trim());
+                    if (isNaN(qty) || qty <= 0) return Swal.fire({icon: 'warning', title: 'خطأ', text: 'الكمية غير صحيحة', confirmButtonColor: '#0F5C4E'});
+                    const product = state.products.find(p => p.sku === sku);
+                    if (!product) return Swal.fire({icon: 'error', title: 'غير موجود', text: `لا يوجد منتج بالكود: ${sku}`, confirmButtonColor: '#0F5C4E'});
+                    
+                    const client = getSelectedPosClient();
+                    const priceKey = client.type === 'wholesale' ? 'wholesalePrice' : 'retailPrice';
+                    if (product[priceKey] <= 0) {
+                        return Swal.fire({icon: 'info', title: 'السعر غير محدد', text: `الرجاء تحديد سعر للمنتج (${product.name}) أولاً.`, confirmButtonColor: '#0F5C4E'}).then(() => { openProductModal(product.id); });
+                    }
+
+                    const existing = state.cart.find(item => item.productId === product.id);
+                    if (existing) { existing.qty += qty; } 
+                    else { state.cart.push({ productId: product.id, qty: qty }); }
+                    
+                    renderCart();
+                    input.value = '';
+                    Swal.fire({toast: true, position: 'top-end', icon: 'success', title: `تم إضافة ${qty} × ${product.name}`, showConfirmButton: false, timer: 1500});
+                } else {
+                    Swal.fire({icon: 'info', title: 'طريقة الإدخال', text: 'أدخل الكود ثم * ثم الكمية. مثال: 101*50', confirmButtonColor: '#0F5C4E'});
+                }
+            }
         }
 
         function getSelectedPosClient() {
@@ -667,12 +807,24 @@
 
         function addToCart(productId) {
             const product = state.products.find(p => p.id === productId);
-            if (!product || product.stock <= 0) return alert('المنتج غير متوفر!');
+            if (!product) return;
+            
+            const client = getSelectedPosClient();
+            const priceKey = client.type === 'wholesale' ? 'wholesalePrice' : 'retailPrice';
+            
+            if (product[priceKey] <= 0) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'السعر غير محدد',
+                    text: 'هذا المنتج لا يحتوي على سعر. يرجى تحديد السعر أولاً (الضغط على أيقونة القلم).',
+                    confirmButtonColor: '#0F5C4E'
+                }).then(() => { openProductModal(productId); });
+                return;
+            }
+
             const existing = state.cart.find(item => item.productId === productId);
-            if (existing) {
-                if(existing.qty + 1 > product.stock) return alert('الكمية تتجاوز المخزون!');
-                existing.qty += 1;
-            } else { state.cart.push({ productId: productId, qty: 1 }); }
+            if (existing) { existing.qty += 1; } 
+            else { state.cart.push({ productId: productId, qty: 1 }); }
             renderCart();
         }
 
@@ -682,7 +834,6 @@
             if (item) {
                 const newQty = item.qty + delta;
                 if (newQty <= 0) state.cart = state.cart.filter(i => i.productId !== productId);
-                else if (newQty > product.stock) return alert('الكمية أكبر من المخزون!');
                 else item.qty = newQty;
             }
             renderCart();
@@ -696,9 +847,8 @@
         function multiplySelectedQty(factor) {
             if (state.cart.length === 0) return;
             const lastItem = state.cart[state.cart.length - 1];
-            const product = state.products.find(p => p.id === lastItem.productId);
-            if(product && lastItem.qty * factor <= product.stock) { lastItem.qty *= factor; renderCart(); }
-            else alert('الكمية تتجاوز المخزون!');
+            lastItem.qty *= factor; 
+            renderCart();
         }
 
         function clearCart() { state.cart = []; renderCart(); }
@@ -736,25 +886,19 @@
         function repeatLastInvoice() {
             const client = getSelectedPosClient();
             const lastInv = [...state.invoices].reverse().find(inv => inv.clientId === client.id);
-            if (!lastInv) return alert('لا توجد فواتير سابقة لهذا الزبون');
+            if (!lastInv) return Swal.fire({icon: 'info', title: 'لا توجد فواتير', text: 'لا توجد فواتير سابقة لهذا الزبون', confirmButtonColor: '#0F5C4E'});
             state.cart = JSON.parse(JSON.stringify(lastInv.items.map(i => ({ productId: i.productId, qty: i.qty }))));
             renderCart();
         }
 
         function checkoutPOS() {
-            if (state.cart.length === 0) return alert('الرجاء إضافة منتجات');
+            if (state.cart.length === 0) return Swal.fire({icon: 'warning', title: 'السلة فارغة', text: 'الرجاء إضافة منتجات', confirmButtonColor: '#0F5C4E'});
             const client = getSelectedPosClient();
             const priceKey = client.type === 'wholesale' ? 'wholesalePrice' : 'retailPrice';
             let invoiceTotal = 0, totalProfit = 0;
 
-            for (let item of state.cart) {
-                const prod = state.products.find(p => p.id === item.productId);
-                if (prod.stock < item.qty) return alert(`المخزون لا يكفي للمنتج: ${prod.name}`);
-            }
-
             const processedItems = state.cart.map(item => {
                 const prod = state.products.find(p => p.id === item.productId);
-                prod.stock -= item.qty;
                 const price = prod[priceKey];
                 const lineTotal = price * item.qty;
                 invoiceTotal += lineTotal;
@@ -772,12 +916,11 @@
             const invoiceObj = {
                 id: invoiceId, date: new Date().toLocaleString('ar-SY'), clientId: client.id, clientName: client.name,
                 paymentType: remainingDebt > 0 ? (paidAmount > 0 ? 'partial' : 'debt') : 'cash',
-                items: processedItems, total: invoiceTotal, paid: paidAmount, remaining: remainingDebt, profit: totalProfit,
-                status: 'active'
+                items: processedItems, total: invoiceTotal, paid: paidAmount, remaining: remainingDebt, profit: totalProfit, status: 'active'
             };
 
             state.invoices.push(invoiceObj);
-            logAudit('بيع فاتورة', `فاتورة ${invoiceId} للزبون ${client.name} بمبلغ ${invoiceTotal.toLocaleString()} (مدفوع: ${paidAmount.toLocaleString()})`);
+            logAudit('بيع فاتورة', `فاتورة ${invoiceId} للزبون ${client.name} بمبلغ ${invoiceTotal.toLocaleString()}`);
             saveToStorage();
 
             showReceiptModal(invoiceObj, client);
@@ -786,143 +929,74 @@
             renderAll();
         }
 
-        // QUICK ADD PRODUCT
         function openQuickProductModal() {
-            document.getElementById('qpName').value = '';
-            document.getElementById('qpRetail').value = '';
-            document.getElementById('qpWholesale').value = '';
+            document.getElementById('qpName').value = ''; document.getElementById('qpRetail').value = '';
+            document.getElementById('qpWholesale').value = ''; document.getElementById('qpSku').value = '';
             document.getElementById('quickProductModal').classList.remove('hidden');
         }
         function saveQuickProduct() {
             const name = document.getElementById('qpName').value;
             const retail = parseFloat(document.getElementById('qpRetail').value) || 0;
             const wholesale = parseFloat(document.getElementById('qpWholesale').value) || 0;
-            const stock = parseInt(document.getElementById('qpStock').value) || 100;
+            const sku = document.getElementById('qpSku').value.trim() || (Date.now().toString().substr(-3));
             
-            if(!name || retail <= 0) return alert('أدخل الاسم والسعر');
+            if(!name || (retail <= 0 && wholesale <= 0)) return Swal.fire({icon: 'error', title: 'خطأ', text: 'أدخل اسم المنتج والسعر', confirmButtonColor: '#0F5C4E'});
             
             const newId = Date.now().toString();
             state.products.push({
-                id: newId, name: name, category: 'مواد غذائية', 
-                cost: retail * 0.8, retailPrice: retail, wholesalePrice: wholesale || retail, stock: stock
+                id: newId, sku: sku, name: name, category: 'مواد غذائية', 
+                cost: 0, retailPrice: retail, wholesalePrice: wholesale, stock: 9999, image: ''
             });
             
             saveToStorage();
             document.getElementById('quickProductModal').classList.add('hidden');
-            addToCart(newId); // Automatically add to cart
+            addToCart(newId); 
             renderAll();
         }
 
-        // RECEIPT
-        function showReceiptModal(inv, client) {
-            document.getElementById('recStoreName').innerText = state.storeInfo.name;
-            document.getElementById('recStoreRegTax').innerText = `سجل تجاري: ${state.storeInfo.reg} | ضريبي: ${state.storeInfo.tax}`;
-            document.getElementById('recStorePhone').innerText = `هاتف: ${state.storeInfo.phone}`;
-            document.getElementById('recStoreAddress').innerText = `العنوان: ${state.storeInfo.address}`;
-
-            document.getElementById('recNum').innerText = '#' + inv.id;
-            document.getElementById('recDate').innerText = inv.date;
-            document.getElementById('recClient').innerText = inv.clientName;
-            
-            let payTypeText = 'نقدي';
-            if(inv.paymentType === 'debt') payTypeText = 'آجل (دين)';
-            if(inv.paymentType === 'partial') payTypeText = 'دفع جزئي';
-            document.getElementById('recPayType').innerText = payTypeText;
-
-            document.getElementById('recItemsBody').innerHTML = inv.items.map(i => `
-                <tr class="border-b border-gray-200"><td class="py-1 font-bold">${i.name}</td><td class="py-1 text-center">${i.qty}</td><td class="py-1 text-left">${i.price.toLocaleString()}</td><td class="py-1 text-left font-bold">${i.total.toLocaleString()}</td></tr>
-            `).join('');
-
-            document.getElementById('recTotal').innerText = inv.total.toLocaleString() + ' ل.س';
-            document.getElementById('recPaid').innerText = inv.paid.toLocaleString() + ' ل.س';
-            document.getElementById('recRemaining').innerText = inv.remaining.toLocaleString() + ' ل.س';
-            document.getElementById('recTotalClientDebt').innerText = client.debt.toLocaleString() + ' ل.س';
-
-            document.getElementById('receiptModal').classList.remove('hidden');
-        }
-        function closeReceiptModal() { document.getElementById('receiptModal').classList.add('hidden'); }
-
-        // INVOICES
-        function renderInvoicesTable() {
-            document.getElementById('invoicesTableBody').innerHTML = state.invoices.slice().reverse().map(inv => `
-                <tr class="border-b border-gray-100 hover:bg-gray-50">
-                    <td class="p-3 text-ashour font-black">${inv.id}</td>
-                    <td class="p-3 text-gray-500">${inv.date}</td>
-                    <td class="p-3 text-gray-800">${inv.clientName}</td>
-                    <td class="p-3 text-gray-800">${inv.total.toLocaleString()} ل.س</td>
-                    <td class="p-3 text-emerald-700">${inv.paid.toLocaleString()} ل.س</td>
-                    <td class="p-3 text-red-600">${inv.remaining.toLocaleString()} ل.س</td>
-                    <td class="p-3 text-indigo-700">${inv.profit.toLocaleString()} ل.س</td>
-                    <td class="p-3 text-center"><button onclick="viewPastInvoice('${inv.id}')" class="text-ashour hover:underline"><i class="fa-solid fa-eye"></i> عرض</button></td>
-                </tr>
-            `).join('');
-        }
-        function viewPastInvoice(invoiceId) {
-            const inv = state.invoices.find(i => i.id === invoiceId);
-            const client = state.clients.find(c => c.id === inv.clientId) || { debt: 0 };
-            showReceiptModal(inv, client);
-        }
-
-        // PRODUCTS TABLE
-        function renderProductsTable() {
-            const search = document.getElementById('prodSearch').value.toLowerCase();
-            const catFilter = document.getElementById('prodCategoryFilter').value;
-            const filtered = state.products.filter(p => (!catFilter || p.category === catFilter) && p.name.toLowerCase().includes(search));
-
-            document.getElementById('productsTableBody').innerHTML = filtered.map(p => {
-                const isLow = p.stock < 10;
-                return `
-                    <tr class="hover:bg-gray-50 border-b border-gray-100 ${isLow ? 'bg-red-50/40' : ''}">
-                        <td class="p-3 font-black text-gray-800">${p.name}</td>
-                        <td class="p-3"><span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-[10px]">${p.category}</span></td>
-                        <td class="p-3 text-gray-600">${p.cost.toLocaleString()}</td>
-                        <td class="p-3 text-emerald-800">${p.retailPrice.toLocaleString()}</td>
-                        <td class="p-3 text-amber-800">${p.wholesalePrice.toLocaleString()}</td>
-                        <td class="p-3 ${isLow ? 'text-red-600 font-black' : 'text-gray-800'}">${p.stock} ${isLow ? '<i class="fa-solid fa-triangle-exclamation text-xs"></i>' : ''}</td>
-                        <td class="p-3 text-indigo-700">+${(p.retailPrice - p.cost).toLocaleString()}</td>
-                        <td class="p-3 text-center"><button onclick="openProductModal('${p.id}')" class="text-ashour hover:text-ashour-dark px-2 py-1"><i class="fa-solid fa-pen-to-square"></i></button></td>
-                    </tr>`;
-            }).join('');
-        }
-
+        // PRODUCT EDIT MODAL
         function openProductModal(prodId = null) {
             document.getElementById('prodEditId').value = prodId || '';
             if (prodId) {
                 const p = state.products.find(item => item.id === prodId);
-                document.getElementById('productModalTitle').innerText = 'تعديل منتج';
+                document.getElementById('productModalTitle').innerText = 'تعديل منتج وسعر';
+                document.getElementById('prodSkuInput').value = p.sku || ''; document.getElementById('prodImageInput').value = p.image || '';
                 document.getElementById('prodNameInput').value = p.name; document.getElementById('prodCatInput').value = p.category;
-                document.getElementById('prodCostInput').value = p.cost; document.getElementById('prodStockInput').value = p.stock;
+                document.getElementById('prodCostInput').value = p.cost; 
                 document.getElementById('prodRetailInput').value = p.retailPrice; document.getElementById('prodWholesaleInput').value = p.wholesalePrice;
             } else {
                 document.getElementById('productModalTitle').innerText = 'إضافة منتج جديد';
+                document.getElementById('prodSkuInput').value = ''; document.getElementById('prodImageInput').value = '';
                 document.getElementById('prodNameInput').value = ''; document.getElementById('prodCostInput').value = '';
-                document.getElementById('prodStockInput').value = '100'; document.getElementById('prodRetailInput').value = ''; document.getElementById('prodWholesaleInput').value = '';
+                document.getElementById('prodRetailInput').value = ''; document.getElementById('prodWholesaleInput').value = '';
             }
             document.getElementById('productModal').classList.remove('hidden');
         }
         function closeProductModal() { document.getElementById('productModal').classList.add('hidden'); }
+
         function saveProduct() {
             const editId = document.getElementById('prodEditId').value;
+            const sku = document.getElementById('prodSkuInput').value.trim();
+            const image = document.getElementById('prodImageInput').value.trim();
             const name = document.getElementById('prodNameInput').value;
             const category = document.getElementById('prodCatInput').value;
             const cost = parseFloat(document.getElementById('prodCostInput').value) || 0;
-            const stock = parseInt(document.getElementById('prodStockInput').value) || 0;
             const retailPrice = parseFloat(document.getElementById('prodRetailInput').value) || 0;
             const wholesalePrice = parseFloat(document.getElementById('prodWholesaleInput').value) || 0;
 
-            if(!name || retailPrice <= 0) return alert('أدخل اسم المنتج والسعر');
+            if(!name || (retailPrice <= 0 && wholesalePrice <= 0)) return Swal.fire({icon: 'error', title: 'خطأ', text: 'أدخل اسم المنتج وسعر واحد على الأقل', confirmButtonColor: '#0F5C4E'});
+            
             if (editId) {
                 const p = state.products.find(item => item.id === editId);
-                Object.assign(p, { name, category, cost, stock, retailPrice, wholesalePrice });
-                logAudit('تعديل منتج', `تعديل ${name}`);
+                Object.assign(p, { sku, image, name, category, cost, retailPrice, wholesalePrice });
+                logAudit('تعديل منتج', `تعديل الاسم أو السعر لـ ${name}`);
             } else {
-                state.products.push({ id: Date.now().toString(), name, category, cost, stock, retailPrice, wholesalePrice });
+                state.products.push({ id: Date.now().toString(), sku, image, name, category, cost, stock: 9999, retailPrice, wholesalePrice });
                 logAudit('إضافة منتج', `إضافة ${name}`);
             }
             saveToStorage(); closeProductModal(); renderAll();
         }
 
-        // SMART PASTE
         function openSmartPasteModal() { document.getElementById('smartPasteModal').classList.remove('hidden'); }
         function closeSmartPasteModal() { document.getElementById('smartPasteModal').classList.add('hidden'); }
         function processSmartPaste() {
@@ -931,13 +1005,13 @@
             let added = 0;
             raw.split('\n').forEach(line => {
                 const parts = line.split(',').map(s => s.trim());
-                if(parts.length >= 6) {
-                    state.products.push({ id: Date.now().toString() + Math.random().toString(36).substr(2, 4), name: parts[0], category: parts[1], cost: parseFloat(parts[2]) || 0, retailPrice: parseFloat(parts[3]) || 0, wholesalePrice: parseFloat(parts[4]) || 0, stock: parseInt(parts[5]) || 0 });
+                if(parts.length >= 7) {
+                    state.products.push({ id: Date.now().toString() + Math.random().toString(36).substr(2, 4), name: parts[0], category: parts[1], cost: parseFloat(parts[2]) || 0, retailPrice: parseFloat(parts[3]) || 0, wholesalePrice: parseFloat(parts[4]) || 0, stock: 9999, sku: parts[6], image: '' });
                     added++;
                 }
             });
             logAudit('لصق ذكي', `إضافة ${added} منتج`);
-            saveToStorage(); closeSmartPasteModal(); renderAll(); alert(`تم إضافة ${added} منتج!`);
+            saveToStorage(); closeSmartPasteModal(); renderAll(); Swal.fire({icon: 'success', title: 'تمت الإضافة', text: `تم إضافة ${added} منتج بنجاح!`, confirmButtonColor: '#0F5C4E'});
         }
 
         // CLIENTS
@@ -966,7 +1040,7 @@
             const type = document.getElementById('clientTypeInput').value;
             const phone = document.getElementById('clientPhoneInput').value || '-';
             const address = document.getElementById('clientAddressInput').value || '-';
-            if(!name) return alert('أدخل اسم الزبون');
+            if(!name) return Swal.fire({icon: 'error', title: 'خطأ', text: 'أدخل اسم الزبون', confirmButtonColor: '#0F5C4E'});
             state.clients.push({ id: 'c_' + Date.now(), name, type, phone, address, debt: 0 });
             logAudit('إضافة زبون', name);
             saveToStorage(); closeClientModal(); renderAll();
@@ -997,7 +1071,7 @@
         function closeLedgerModal() { document.getElementById('ledgerModal').classList.add('hidden'); }
         function recordDebtPayment() {
             const amount = parseFloat(document.getElementById('payDebtAmount').value);
-            if (!amount || amount <= 0) return alert('أدخل مبلغاً صحيحاً');
+            if (!amount || amount <= 0) return Swal.fire({icon: 'warning', title: 'تنبيه', text: 'أدخل مبلغاً صحيحاً', confirmButtonColor: '#0F5C4E'});
             const client = state.clients.find(c => c.id === state.currentLedgerClientId);
             if (client) {
                 client.debt = Math.max(0, client.debt - amount);
@@ -1007,103 +1081,6 @@
             }
         }
 
-        // PURCHASES
-        function renderPurchasesTable() {
-            document.getElementById('purchasesTableBody').innerHTML = state.purchases.map(p => `
-                <tr class="border-b border-gray-100">
-                    <td class="p-3 text-gray-800 font-bold">#${p.id}</td><td class="p-3 text-gray-500">${p.date}</td>
-                    <td class="p-3 text-ashour font-black">${p.supplier}</td><td class="p-3 text-gray-700">${p.productName}</td>
-                    <td class="p-3 text-gray-700">${p.qty}</td><td class="p-3 text-emerald-800 font-black">${p.totalCost.toLocaleString()} ل.س</td>
-                </tr>`).join('');
-            const select = document.getElementById('purProductSelect');
-            if(select) select.innerHTML = state.products.map(prod => `<option value="${prod.id}">${prod.name} (تكلفة: ${prod.cost})</option>`).join('');
-        }
-        function openPurchaseModal() { renderPurchasesTable(); document.getElementById('purchaseModal').classList.remove('hidden'); }
-        function closePurchaseModal() { document.getElementById('purchaseModal').classList.add('hidden'); }
-        function savePurchase() {
-            const supplier = document.getElementById('purSupplierInput').value || 'مورد';
-            const prodId = document.getElementById('purProductSelect').value;
-            const qty = parseInt(document.getElementById('purQtyInput').value) || 0;
-            const newCost = parseFloat(document.getElementById('purCostInput').value);
-            const prod = state.products.find(p => p.id === prodId);
-            if (!prod || qty <= 0) return alert('بيانات خاطئة');
-            if(newCost && newCost > 0) prod.cost = newCost;
-            prod.stock += qty;
-            state.purchases.push({ id: Date.now().toString().substr(6), date: new Date().toLocaleString('ar-SY'), supplier, productName: prod.name, qty, totalCost: qty * prod.cost });
-            logAudit('شراء', `${qty} من ${prod.name} من ${supplier}`);
-            saveToStorage(); closePurchaseModal(); renderAll();
-        }
-
-        // RETURNS
-        function renderReturnsTable() {
-            document.getElementById('returnsTableBody').innerHTML = state.returns.map(r => `
-                <tr class="border-b border-gray-100">
-                    <td class="p-3 text-gray-800">#${r.id}</td><td class="p-3 text-gray-500">${r.date}</td>
-                    <td class="p-3 text-ashour font-black">${r.clientName}</td><td class="p-3 text-gray-500">${r.invoiceId}</td>
-                    <td class="p-3 text-gray-800 font-bold">${r.productName}</td><td class="p-3 text-amber-800">${r.qty}</td>
-                    <td class="p-3 text-red-600 font-black">${r.totalRefund.toLocaleString()} ل.س</td>
-                </tr>`).join('');
-        }
-
-        function openReturnModal() {
-            renderReturnsTable();
-            const invSelect = document.getElementById('retInvoiceSelect');
-            invSelect.innerHTML = `<option value="">-- اختر الفاتورة --</option>` + state.invoices.slice().reverse().map(inv => `<option value="${inv.id}">${inv.id} - ${inv.clientName} (${inv.total})</option>`).join('');
-            document.getElementById('retProductSelect').innerHTML = ''; document.getElementById('retProductSelect').disabled = true;
-            document.getElementById('retQtyInput').disabled = true; document.getElementById('retPriceInput').disabled = true;
-            document.getElementById('retQtyInput').value = 1; document.getElementById('retPriceInput').value = '';
-            document.getElementById('returnModal').classList.remove('hidden');
-        }
-        function closeReturnModal() { document.getElementById('returnModal').classList.add('hidden'); }
-
-        function onReturnInvoiceChange() {
-            const invId = document.getElementById('retInvoiceSelect').value;
-            const prodSelect = document.getElementById('retProductSelect');
-            if(!invId) {
-                prodSelect.innerHTML = ''; prodSelect.disabled = true; return;
-            }
-            const inv = state.invoices.find(i => i.id === invId);
-            prodSelect.innerHTML = inv.items.map(i => `<option value="${i.productId}" data-price="${i.price}" data-qty="${i.qty}">${i.name} (مشترى: ${i.qty} بسعر ${i.price})</option>`).join('');
-            prodSelect.disabled = false;
-            document.getElementById('retQtyInput').disabled = false;
-            document.getElementById('retPriceInput').disabled = false;
-            onReturnProductChange();
-        }
-
-        function onReturnProductChange() {
-            const prodSelect = document.getElementById('retProductSelect');
-            const selectedOption = prodSelect.options[prodSelect.selectedIndex];
-            if(selectedOption) {
-                document.getElementById('retPriceInput').value = selectedOption.getAttribute('data-price');
-                document.getElementById('retQtyInput').max = selectedOption.getAttribute('data-qty');
-            }
-        }
-        document.getElementById('retProductSelect')?.addEventListener('change', onReturnProductChange);
-
-        function saveReturn() {
-            const invId = document.getElementById('retInvoiceSelect').value;
-            const prodId = document.getElementById('retProductSelect').value;
-            const qty = parseInt(document.getElementById('retQtyInput').value) || 0;
-            const price = parseFloat(document.getElementById('retPriceInput').value) || 0;
-
-            if(!invId || !prodId || qty <= 0) return alert('أكمل البيانات بشكل صحيح');
-            
-            const inv = state.invoices.find(i => i.id === invId);
-            const client = state.clients.find(c => c.id === inv.clientId);
-            const prod = state.products.find(p => p.id === prodId);
-            const itemInInv = inv.items.find(i => i.productId === prodId);
-
-            if(qty > itemInInv.qty) return alert(`الكمية المرتجعة (${qty}) أكبر من الكمية المشتراة (${itemInInv.qty})`);
-
-            const totalRefund = qty * price;
-            prod.stock += qty; 
-            client.debt = Math.max(0, client.debt - totalRefund);
-
-            state.returns.push({ id: Date.now().toString().substr(6), date: new Date().toLocaleString('ar-SY'), invoiceId: inv.id, clientName: client.name, productName: prod.name, qty, totalRefund });
-            logAudit('مرتجع', `${qty} من ${prod.name} للزبون ${client.name} بقيمة ${totalRefund}`);
-            saveToStorage(); closeReturnModal(); renderAll();
-        }
-
         // REPORTS & AUDIT
         function renderAuditLog() {
             document.getElementById('auditLogBody').innerHTML = state.auditLog.slice(0, 50).map(log => `
@@ -1111,6 +1088,34 @@
                     <td class="p-3 text-gray-400 font-bold">${log.date}</td><td class="p-3 font-black text-ashour">${log.type}</td>
                     <td class="p-3 text-gray-800 font-bold">${log.details}</td>
                     <td class="p-3"><span class="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-black">${log.status}</span></td>
+                </tr>`).join('');
+        }
+
+        // PRODUCTS TABLE RENDER
+        function renderProductsTable() {
+            const search = document.getElementById('prodSearch').value.toLowerCase();
+            const catFilter = document.getElementById('prodCategoryFilter').value;
+            const filtered = state.products.filter(p => {
+                const matchCat = (!catFilter || p.category === catFilter);
+                const matchSearch = p.name.toLowerCase().includes(search) || (p.sku && p.sku.includes(search));
+                return matchCat && matchSearch;
+            });
+
+            document.getElementById('productsTableBody').innerHTML = filtered.map(p => `
+                <tr class="hover:bg-gray-50 border-b border-gray-100">
+                    <td class="p-2"><img src="${p.image || 'https://placehold.co/100x100?text=صورة'}" class="w-8 h-8 rounded-md object-cover"></td>
+                    <td class="p-3 text-ashour font-black">${p.sku || '-'}</td>
+                    <td class="p-3 font-black text-indigo-700">${p.name}</td>
+                    <td class="p-3"><span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-[10px]">${p.category}</span></td>
+                    <td class="p-3 text-gray-600">${p.cost.toLocaleString()}</td>
+                    <td class="p-3 text-emerald-800">${p.retailPrice.toLocaleString()}</td>
+                    <td class="p-3 text-amber-800">${p.wholesalePrice.toLocaleString()}</td>
+                    <!-- تم حذف عمود المخزون -->
+                    <td class="p-3 text-center">
+                        <button onclick="openProductModal('${p.id}')" class="bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white px-3 py-1 rounded transition text-[10px] font-bold" title="تعديل الاسم والسعر">
+                            <i class="fa-solid fa-pen"></i> تعديل
+                        </button>
+                    </td>
                 </tr>`).join('');
         }
 
@@ -1131,14 +1136,14 @@
                 tax: document.getElementById('setStoreTax').value,
                 address: document.getElementById('setStoreAddress').value
             };
-            saveToStorage(); loadStoreInfoToSettings(); alert('تم حفظ بيانات المتجر!');
+            saveToStorage(); loadStoreInfoToSettings(); Swal.fire({icon: 'success', title: 'تم الحفظ', text: 'تم حفظ بيانات المتجر!', confirmButtonColor: '#0F5C4E'});
         }
 
         function changePinCode() {
             const newPin = document.getElementById('newPinInput').value;
             if (newPin && newPin.length >= 4) {
-                state.pin = newPin; saveToStorage(); logAudit('تغيير PIN', 'تم التغيير'); alert('تم تغيير رمز الحماية!');
-            } else alert('الرمز يجب أن يكون 4 أرقام على الأقل');
+                state.pin = newPin; saveToStorage(); logAudit('تغيير PIN', 'تم التغيير'); Swal.fire({icon: 'success', title: 'تم التغيير', text: 'تم تغيير رمز الحماية بنجاح!', confirmButtonColor: '#0F5C4E'});
+            } else Swal.fire({icon: 'error', title: 'خطأ', text: 'الرمز يجب أن يكون 4 أرقام على الأقل', confirmButtonColor: '#0F5C4E'});
         }
 
         function exportDataBackup() {
@@ -1153,13 +1158,54 @@
                 try {
                     const imported = JSON.parse(e.target.result);
                     if (imported.products && imported.clients) {
-                        state = imported; saveToStorage(); renderAll(); alert('تم الاستعادة!');
+                        state = imported; saveToStorage(); renderAll(); Swal.fire({icon: 'success', title: 'تمت الاستعادة', text: 'تم استعادة البيانات بنجاح!', confirmButtonColor: '#0F5C4E'});
                     }
-                } catch(err) { alert('ملف غير صالح!'); }
+                } catch(err) { Swal.fire({icon: 'error', title: 'خطأ', text: 'ملف غير صالح!', confirmButtonColor: '#0F5C4E'}); }
             };
             reader.readAsText(event.target.files[0]);
         }
-        function resetDemoData() { if(confirm('استعادة العرض؟')) { loadDefaults(); renderAll(); alert('تم!'); } }
+
+        // RECEIPT
+        function showReceiptModal(inv, client) {
+            document.getElementById('recStoreName').innerText = state.storeInfo.name;
+            document.getElementById('recStoreRegTax').innerText = `سجل تجاري: ${state.storeInfo.reg} | ضريبي: ${state.storeInfo.tax}`;
+            document.getElementById('recStorePhone').innerText = `هاتف: ${state.storeInfo.phone}`;
+            document.getElementById('recStoreAddress').innerText = `العنوان: ${state.storeInfo.address}`;
+            document.getElementById('recNum').innerText = '#' + inv.id;
+            document.getElementById('recDate').innerText = inv.date;
+            document.getElementById('recClient').innerText = inv.clientName;
+            
+            let payTypeText = inv.paymentType === 'debt' ? 'آجل (دين)' : (inv.paymentType === 'partial' ? 'دفع جزئي' : 'نقدي');
+            document.getElementById('recPayType').innerText = payTypeText;
+
+            document.getElementById('recItemsBody').innerHTML = inv.items.map(i => `
+                <tr class="border-b border-gray-200"><td class="py-1 font-bold">${i.name}</td><td class="py-1 text-center">${i.qty}</td><td class="py-1 text-left">${i.price.toLocaleString()}</td><td class="py-1 text-left font-bold">${i.total.toLocaleString()}</td></tr>
+            `).join('');
+
+            document.getElementById('recTotal').innerText = inv.total.toLocaleString() + ' ل.س';
+            document.getElementById('recPaid').innerText = inv.paid.toLocaleString() + ' ل.س';
+            document.getElementById('recRemaining').innerText = inv.remaining.toLocaleString() + ' ل.س';
+            document.getElementById('recTotalClientDebt').innerText = client.debt.toLocaleString() + ' ل.س';
+
+            document.getElementById('receiptModal').classList.remove('hidden');
+        }
+
+        function renderInvoicesTable() {
+            document.getElementById('invoicesTableBody').innerHTML = state.invoices.slice().reverse().map(inv => `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="p-3 text-ashour font-black">${inv.id}</td><td class="p-3 text-gray-500">${inv.date}</td>
+                    <td class="p-3 text-gray-800">${inv.clientName}</td><td class="p-3 text-gray-800">${inv.total.toLocaleString()} ل.س</td>
+                    <td class="p-3 text-emerald-700">${inv.paid.toLocaleString()} ل.س</td><td class="p-3 text-red-600">${inv.remaining.toLocaleString()} ل.س</td>
+                    <td class="p-3 text-indigo-700">${inv.profit.toLocaleString()} ل.س</td>
+                    <td class="p-3 text-center"><button onclick="viewPastInvoice('${inv.id}')" class="text-ashour hover:underline"><i class="fa-solid fa-eye"></i> عرض</button></td>
+                </tr>
+            `).join('');
+        }
+        function viewPastInvoice(invoiceId) {
+            const inv = state.invoices.find(i => i.id === invoiceId);
+            const client = state.clients.find(c => c.id === inv.clientId) || { debt: 0 };
+            showReceiptModal(inv, client);
+        }
 
         function renderAll() {
             renderDashboardKPIs();
@@ -1169,8 +1215,6 @@
             renderInvoicesTable();
             renderProductsTable();
             renderClientsGrid();
-            renderPurchasesTable();
-            renderReturnsTable();
             renderAuditLog();
             loadStoreInfoToSettings();
         }
