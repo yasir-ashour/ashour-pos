@@ -221,7 +221,7 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="clientsGrid"></div>
         </div>
 
-        <!-- EXPENSES (NEW FEATURE) -->
+        <!-- EXPENSES -->
         <div id="view-expenses" class="tab-view hidden space-y-4 max-w-4xl mx-auto">
             <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex flex-wrap justify-between items-center gap-3">
                 <div><h2 class="text-xl font-black text-ashour">إدارة المصاريف اليومية</h2><p class="text-xs text-gray-500">تسجيل المصاريف النثرية وأجور النقل لحساب صافي الأرباح بدقة</p></div>
@@ -346,7 +346,7 @@
         </div>
     </div>
 
-    <!-- Expense Modal (New Feature) -->
+    <!-- Expense Modal -->
     <div id="expenseModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4">
             <h3 class="text-lg font-black text-purple-700"><i class="fa-solid fa-wallet"></i> تسجيل مصروف جديد</h3>
@@ -415,13 +415,27 @@
         </div>
     </div>
 
-    <!-- Client Modal -->
+    <!-- Client Modal (مع تحسين أزرار الاختيار بدلاً من القائمة المزعجة) -->
     <div id="clientModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4">
             <h3 class="text-lg font-black text-ashour">إضافة زبون جديد</h3>
             <div class="space-y-3 text-xs font-bold">
                 <div><label class="block mb-1">الاسم الثلاثي / اسم المحل:</label><input type="text" id="clientNameInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-                <div><label class="block mb-1">نوع الزبون:</label><select id="clientTypeInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"><option value="retail">عميل عادي (سعر التجزئة)</option><option value="wholesale">موزع جملة (سعر الجملة)</option></select></div>
+                
+                <div>
+                    <label class="block mb-1.5">نوع الزبون:</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center gap-2 p-2.5 bg-gray-50 border border-gray-300 rounded-xl cursor-pointer hover:bg-emerald-50 hover:border-emerald-500 transition">
+                            <input type="radio" name="clientTypeRadio" value="retail" checked class="text-ashour focus:ring-ashour">
+                            <span>عميل تجزئة</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2.5 bg-gray-50 border border-gray-300 rounded-xl cursor-pointer hover:bg-amber-50 hover:border-amber-500 transition">
+                            <input type="radio" name="clientTypeRadio" value="wholesale" class="text-ashour focus:ring-ashour">
+                            <span>موزع جملة</span>
+                        </label>
+                    </div>
+                </div>
+
                 <div><label class="block mb-1">الهاتف:</label><input type="text" id="clientPhoneInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
                 <div><label class="block mb-1">العنوان:</label><input type="text" id="clientAddressInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
             </div>
@@ -456,7 +470,6 @@
     </div>
 
     <script>
-        // قائمة المنتجات الافتراضية
         const IMPORTED_PRODUCTS = [
             {"name": "اربيكا طبيعي صغير", "category": "شيبس", "image": "https://i.ibb.co/prfRDSvB/1791902542596.jpg"},
             {"name": "اربيكا طبيعي جامبو", "category": "شيبس", "image": "https://i.ibb.co/jkfPR6Zy/1791902579906.jpg"},
@@ -493,7 +506,7 @@
             autoLockTimer = setTimeout(() => {
                 if(!document.getElementById('pinOverlay').classList.contains('hidden')) return;
                 lockApp();
-            }, 300000); // 5 دقائق قفل تلقائي
+            }, 300000);
         }
 
         const DEMO_CLIENTS = [
@@ -548,7 +561,6 @@
             renderAll();
         }
 
-        // PIN SECURITY
         let enteredPin = '';
         function pressPin(num) { if (enteredPin.length < 6) { enteredPin += num; updatePinDots(); } }
         function clearPin() { enteredPin = ''; updatePinDots(); }
@@ -566,7 +578,6 @@
             document.getElementById('pinOverlay').classList.remove('hidden'); clearPin(); document.getElementById('pinError').classList.add('hidden');
         }
 
-        // DASHBOARD KPIS
         function renderDashboardKPIs() {
             let todaySales = 0, todayGrossProfit = 0, todayExpenses = 0;
             state.invoices.forEach(inv => { todaySales += inv.total; todayGrossProfit += (inv.profit || 0); });
@@ -580,7 +591,6 @@
             document.getElementById('kpiExpenses').innerText = todayExpenses.toLocaleString() + ' ل.س';
         }
 
-        // POS
         function initPOSCategories() {
             const categories = ['الكل', 'بسكويت', 'شيبس', 'عصائر ومشروبات', 'سكاكر وعلكة', 'قهوة'];
             document.getElementById('posCategoryFilter').innerHTML = categories.map(cat => `
@@ -601,11 +611,9 @@
 
             document.getElementById('posProductsGrid').innerHTML = filtered.map(p => `
                 <div onclick="addToCart('${p.id}')" class="bg-white border hover:border-ashour p-2.5 rounded-2xl shadow-sm cursor-pointer transition flex flex-col justify-between relative group border-gray-200">
-                    
                     <button onclick="event.stopPropagation(); openProductModal('${p.id}')" class="absolute top-2 left-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white w-7 h-7 rounded-full flex items-center justify-center z-10 shadow-sm transition" title="تعديل السعر والمخزون">
                         <i class="fa-solid fa-pen text-[10px]"></i>
                     </button>
-
                     <div class="flex gap-2 items-start">
                         <img src="${p.image || 'https://placehold.co/100x100?text=صورة'}" class="w-12 h-12 rounded-lg object-cover bg-gray-100 border border-gray-200 flex-shrink-0">
                         <div class="flex-grow pr-1">
@@ -650,8 +658,6 @@
                     renderCart();
                     input.value = '';
                     Swal.fire({toast: true, position: 'top-end', icon: 'success', title: `تم إضافة ${qty} × ${product.name}`, showConfirmButton: false, timer: 1200});
-                } else {
-                    Swal.fire({icon: 'info', title: 'طريقة الإدخال السريع', text: 'أدخل الكود ثم * ثم الكمية. مثال: 101*5', confirmButtonColor: '#0F5C4E'});
                 }
             }
         }
@@ -684,7 +690,6 @@
         function addToCart(productId) {
             const product = state.products.find(p => p.id === productId);
             if (!product) return;
-            
             const client = getSelectedPosClient();
             const priceKey = client.type === 'wholesale' ? 'wholesalePrice' : 'retailPrice';
             
@@ -773,10 +778,7 @@
                 const lineTotal = price * item.qty;
                 invoiceTotal += lineTotal;
                 totalProfit += (price - prod.cost) * item.qty;
-                
-                // خصم المخزون تلقائياً
                 prod.stock = Math.max(0, prod.stock - item.qty);
-
                 return { productId: prod.id, name: prod.name, qty: item.qty, price: price, total: lineTotal };
             });
 
@@ -803,7 +805,6 @@
             renderAll();
         }
 
-        // PRODUCTS & QUICK ADD
         function openQuickProductModal() {
             document.getElementById('qpName').value = ''; document.getElementById('qpRetail').value = '';
             document.getElementById('qpWholesale').value = ''; document.getElementById('qpSku').value = '';
@@ -874,7 +875,6 @@
             saveToStorage(); closeProductModal(); renderAll();
         }
 
-        // SMART PASTE
         function openSmartPasteModal() { document.getElementById('smartPasteModal').classList.remove('hidden'); }
         function closeSmartPasteModal() { document.getElementById('smartPasteModal').classList.add('hidden'); }
         function processSmartPaste() {
@@ -893,7 +893,6 @@
             Swal.fire({icon: 'success', title: 'تمت الإضافة', text: `تم إضافة ${added} منتج بنجاح!`, confirmButtonColor: '#0F5C4E'});
         }
 
-        // EXPENSES MANAGEMENT (NEW FEATURE)
         function openExpenseModal() {
             document.getElementById('expTitle').value = '';
             document.getElementById('expAmount').value = '';
@@ -931,7 +930,6 @@
             });
         }
 
-        // CLIENTS & LEDGER
         function renderClientsGrid() {
             document.getElementById('clientsGrid').innerHTML = state.clients.map(c => `
                 <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm space-y-3 flex flex-col justify-between">
@@ -950,17 +948,27 @@
                 </div>`).join('');
         }
 
-        function openClientModal() { document.getElementById('clientModal').classList.remove('hidden'); }
+        function openClientModal() { 
+            document.getElementById('clientNameInput').value = '';
+            document.getElementById('clientPhoneInput').value = '';
+            document.getElementById('clientAddressInput').value = '';
+            document.querySelector('input[name="clientTypeRadio"][value="retail"]').checked = true;
+            document.getElementById('clientModal').classList.remove('hidden'); 
+        }
         function closeClientModal() { document.getElementById('clientModal').classList.add('hidden'); }
+        
         function saveClient() {
-            const name = document.getElementById('clientNameInput').value;
-            const type = document.getElementById('clientTypeInput').value;
-            const phone = document.getElementById('clientPhoneInput').value || '-';
-            const address = document.getElementById('clientAddressInput').value || '-';
+            const name = document.getElementById('clientNameInput').value.trim();
+            const type = document.querySelector('input[name="clientTypeRadio"]:checked').value;
+            const phone = document.getElementById('clientPhoneInput').value.trim() || '-';
+            const address = document.getElementById('clientAddressInput').value.trim() || '-';
+            
             if(!name) return Swal.fire({icon: 'error', title: 'خطأ', text: 'أدخل اسم الزبون', confirmButtonColor: '#0F5C4E'});
+            
             state.clients.push({ id: 'c_' + Date.now(), name, type, phone, address, debt: 0 });
             logAudit('إضافة زبون', name);
             saveToStorage(); closeClientModal(); renderAll();
+            Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'تمت إضافة الزبون بنجاح', showConfirmButton: false, timer: 1500});
         }
 
         function openLedger(clientId) {
@@ -999,7 +1007,6 @@
             }
         }
 
-        // TABLES RENDERING
         function renderProductsTable() {
             const search = document.getElementById('prodSearch').value.toLowerCase();
             const catFilter = document.getElementById('prodCategoryFilter').value;
@@ -1084,7 +1091,6 @@
                 </tr>`).join('');
         }
 
-        // SETTINGS & BACKUP
         function loadStoreInfoToSettings() {
             document.getElementById('setStoreName').value = state.storeInfo.name;
             document.getElementById('setStorePhone').value = state.storeInfo.phone;
@@ -1136,7 +1142,6 @@
             reader.readAsText(event.target.files[0]);
         }
 
-        // RECEIPT MODAL
         function showReceiptModal(inv, client) {
             document.getElementById('recStoreName').innerText = state.storeInfo.name;
             document.getElementById('recStoreRegTax').innerText = `سجل تجاري: ${state.storeInfo.reg} | ضريبي: ${state.storeInfo.tax}`;
