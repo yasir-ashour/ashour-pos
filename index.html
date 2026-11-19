@@ -121,7 +121,6 @@ tailwind.config = {
           <button onclick="openSmartInputModal()" class="bg-purple-600 hover:bg-purple-700 text-white px-3 md:px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm whitespace-nowrap"><i class="fa-solid fa-brain"></i> إدخال ذكي</button>
           <button onclick="openQuickProductModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 md:px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm whitespace-nowrap"><i class="fa-solid fa-plus"></i> منتج سريع</button>
         </div>
-        <!-- Custom Category Filter Bar -->
         <div id="posCategoryFilter" class="flex gap-2 overflow-x-auto pb-1"></div>
       </div>
       <div id="posProductsGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto max-h-[520px] p-1"></div>
@@ -304,7 +303,7 @@ tailwind.config = {
         <h3 class="font-bold text-sm text-gray-800">تغيير رمز قفل PIN</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-2 max-w-2xl text-xs font-bold">
           <input type="password" id="oldPinInput" maxlength="6" placeholder="الرمز الحالي" class="bg-gray-50 border border-gray-300 rounded-xl px-3 py-2">
-          <input type="password" id="newPinInput" maxlength="6" placeholder="الرمز الجديد" class="bg-gray-50 border border-gray-300 rounded-xl px-3 py-2">
+          <input type="password" id="newPinInput" maxlength="6" placeholder="الرمز الجديد (4-6 أرقام)" class="bg-gray-50 border border-gray-300 rounded-xl px-3 py-2">
           <button onclick="changePinCode()" class="bg-ashour text-white px-4 py-2 rounded-xl hover:bg-ashour-dark transition">حفظ</button>
         </div>
       </div>
@@ -518,7 +517,7 @@ function normalizeArabic(str) {
     .replace(/[أآإٱ]/g, 'ا')
     .replace(/ة/g, 'ه')
     .replace(/ى/g, 'ي')
-    .replace(/[\u064b-\u065f]/g, ''); // تشكيل
+    .replace(/[\u064b-\u065f]/g, '');
 }
 function dayKey(ts) {
   const d = new Date(ts);
@@ -557,7 +556,7 @@ const IMPORTED_PRODUCTS = [
 
 /* ==================== State ==================== */
 let state = {
-  pinHash: null, pinAttempts: 0, pinLockUntil: 0,
+  pinHash: null, pinLength: 4, pinAttempts: 0, pinLockUntil: 0,
   storeInfo: { name:'مركز عاشور للجملة', phone:'0991234567', address:'السوق المركزي - صالة الجملة' },
   products: [], clients: [], invoices: [], expenses: [], payments: [], auditLog: [],
   invoiceCounter: 1000,
@@ -566,7 +565,7 @@ let state = {
 
 function defaultState() {
   return {
-    pinHash: null, pinAttempts: 0, pinLockUntil: 0,
+    pinHash: null, pinLength: 4, pinAttempts: 0, pinLockUntil: 0,
     storeInfo: { name:'مركز عاشور للجملة', phone:'0991234567', address:'السوق المركزي - صالة الجملة' },
     products: IMPORTED_PRODUCTS.map((p,i) => ({
       id: (i+1).toString(), sku: (101+i).toString(), name: p.name, category: p.category,
@@ -608,6 +607,10 @@ async function loadFromStorage() {
   }
   if (!state.pinHash) {
     state.pinHash = await hashPin('1234');
+    state.pinLength = 4;
+  }
+  if (!state.pinLength) {
+    state.pinLength = 4;
   }
   saveToStorage();
 }
@@ -628,10 +631,11 @@ async function hashPin(pin) {
 
 let enteredPin = '';
 function pressPin(n) {
+  const targetLen = state.pinLength || 4;
   if (enteredPin.length < 6) {
     enteredPin += n;
     updatePinDots();
-    if (enteredPin.length === 4 || enteredPin.length === 6) {
+    if (enteredPin.length === targetLen) {
       submitPin();
     }
   }
@@ -663,12 +667,14 @@ async function submitPin() {
   if (h === state.pinHash) {
     $('pinOverlay').classList.add('hidden');
     state.pinAttempts = 0;
+    if (!state.pinLength && enteredPin.length >= 4) {
+      state.pinLength = enteredPin.length;
+    }
     saveToStorage();
     clearPin();
     resetAutoLock();
   } else {
     state.pinAttempts = (state.pinAttempts || 0) + 1;
-    // Shake & Red dots animation
     const dotsContainer = $('pinDots');
     dotsContainer.classList.add('shake');
     document.querySelectorAll('.pin-dot').forEach(d => {
@@ -733,7 +739,6 @@ function refreshCategoryWidgets() {
   const cats = allCategories();
   $('categoryList').innerHTML = cats.map(c => `<option value="${esc(c)}"></option>`).join('');
   
-  // Custom Product Category Dropdown
   const prodCatList = $('prodCatDropdownList');
   prodCatList.innerHTML = `<div onclick="selectProdCat('')" class="p-2.5 hover:bg-gray-100 cursor-pointer text-xs font-bold">جميع الفئات</div>` +
     cats.map(c => `<div onclick="selectProdCat('${esc(c)}')" class="p-2.5 hover:bg-gray-100 cursor-pointer text-xs font-bold">${esc(c)}</div>`).join('');
@@ -1204,7 +1209,6 @@ function saveQuickProduct() {
 
 function openSmartInputModal() { $('smartInputText').value = ''; openModal('smartInputModal'); }
 
-/* Smart Text Parser / Deep Match */
 function processSmartInput() {
   const raw = $('smartInputText').value.trim();
   if (!raw) return;
@@ -1214,25 +1218,15 @@ function processSmartInput() {
 
   lines.forEach(line => {
     if (!line.trim()) return;
-    // Extract numbers and text
     const numbers = line.match(/\d+/g);
     let qty = 1;
-    if (numbers && numbers.length > 0) {
-      // Last or second number might be quantity if small, or price
-      // Let's check common format: Name ... Price ... Qty
-      // Or simply let's find matching product in database with deep fuzzy search
-    }
 
-    // Clean name by removing digits
     let cleanQuery = normalizeArabic(line.replace(/\d+/g, ''));
-    
-    // Find best matching product
     let bestMatch = null;
     let maxMatchScore = 0;
 
     state.products.forEach(p => {
       let pNameNorm = normalizeArabic(p.name);
-      // Simple word overlap score
       let words = cleanQuery.split(/\s+/);
       let score = 0;
       words.forEach(w => {
@@ -1245,7 +1239,6 @@ function processSmartInput() {
     });
 
     if (bestMatch && maxMatchScore > 0) {
-      // Extract quantity if present in numbers (e.g. last number if <= 50)
       if (numbers && numbers.length > 0) {
         let lastNum = parseInt(numbers[numbers.length - 1], 10);
         if (lastNum < 100 && numbers.length > 1) {
@@ -1682,18 +1675,19 @@ async function changePinCode() {
   const oldPin = $('oldPinInput').value;
   const newPin = $('newPinInput').value;
 
-  if (!newPin || newPin.length < 4) return warn('خطأ', 'الرمز الجديد 4 أرقام على الأقل');
+  if (!newPin || newPin.length < 4 || newPin.length > 6) return warn('خطأ', 'الرمز الجديد يجب أن يكون من 4 إلى 6 أرقام');
   if (!/^\d+$/.test(newPin)) return warn('خطأ', 'الرمز أرقام فقط');
 
   const oldHash = await hashPin(oldPin);
   if (oldHash !== state.pinHash) return warn('خطأ', 'الرمز الحالي غير صحيح', 'error');
 
   state.pinHash = await hashPin(newPin);
+  state.pinLength = newPin.length;
   logAudit('تغيير PIN', 'تم تغيير رمز الحماية');
   saveToStorage();
   $('oldPinInput').value = '';
   $('newPinInput').value = '';
-  toast('تم تغيير رمز PIN');
+  toast('تم تغيير رمز PIN بنجاح');
 }
 
 function exportDataBackup() {
@@ -1729,8 +1723,10 @@ function importDataBackup(ev) {
       }).then(res => {
         if (!res.isConfirmed) return;
         const keepPin = state.pinHash;
+        const keepLen = state.pinLength;
         state = Object.assign(defaultState(), incoming);
         state.pinHash = keepPin;
+        state.pinLength = keepLen || 4;
         state.cart = [];
         saveToStorage();
         refreshCategoryWidgets();
