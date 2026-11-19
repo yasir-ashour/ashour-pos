@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>مركز عاشور - إدارة المبيعات والمخزون</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0F5C4E">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -1812,6 +1814,13 @@ function renderAll() {
   renderExpensesTable();
   renderAuditLog();
   if (!$('view-reports').classList.contains('hidden')) renderReports();
+}
+
+/* ==================== PWA Service Worker Registration ==================== */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
 }
 
 /* ==================== Init ==================== */
