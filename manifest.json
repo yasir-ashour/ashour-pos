@@ -1,0 +1,19 @@
+{
+  "name": "مركز عاشور - نظام المبيعات",
+  "short_name": "عاشور POS",
+  "description": "نظام ذكي لإدارة المبيعات والمخزون ونقاط البيع",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F4F7F9",
+  "theme_color": "#0F5C4E",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3514/3514491.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
