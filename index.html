@@ -20,7 +20,7 @@ tailwind.config = {
 }
 </script>
 <style>
-  body { font-family:'Tajawal',sans-serif; background:#F4F7F9; }
+  body { font-family:'Tajawal',sans-serif; background:#F4F7F9; letter-spacing: 0; }
   @media print {
     body * { visibility:hidden; }
     #printableReceipt, #printableReceipt * { visibility:visible; }
@@ -34,7 +34,7 @@ tailwind.config = {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  .tab-view:not(.hidden) { animation: fadeSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+  .tab-view:not(.hidden) { animation: fadeSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1); }
 
   @keyframes shake {
     0%, 100% { transform: translateX(0); }
@@ -46,7 +46,18 @@ tailwind.config = {
   @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(16,185,129,.4)} 70%{box-shadow:0 0 0 10px rgba(16,185,129,0)} 100%{box-shadow:0 0 0 0 rgba(16,185,129,0)} }
 
   .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-  .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 20px -6px rgba(15, 92, 78, 0.15); }
+  .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 22px -8px rgba(15, 92, 78, 0.18); }
+
+  /* إصلاح وضوح النص العربي في الفاتورة عند التحويل لصورة */
+  #printableReceipt {
+    font-family: 'Tajawal', sans-serif !important;
+    letter-spacing: 0 !important;
+    word-spacing: normal !important;
+    text-rendering: geometricPrecision;
+  }
+  #printableReceipt * {
+    letter-spacing: 0 !important;
+  }
 </style>
 </head>
 <body class="text-gray-800 antialiased min-h-screen flex flex-col">
@@ -94,8 +105,8 @@ tailwind.config = {
         <i class="fa-solid fa-boxes-packing text-ashour-gold"></i>
       </div>
       <div>
-        <h1 id="headerStoreName" class="text-xl font-black tracking-wide">مركز عاشور تجارة الجملة</h1>
-        <p class="text-xs text-emerald-200 font-medium">نظام المبيعات والمخزون المتطور</p>
+        <h1 id="headerStoreName" class="text-xl font-black">مركز عاشور للتجارة</h1>
+        <p class="text-xs text-emerald-200 font-medium">نظام المبيعات والمخزون • الليرة السورية الجديدة (ل.س.ج)</p>
       </div>
     </div>
     <nav class="flex items-center gap-1 overflow-x-auto py-1 text-sm font-bold w-full md:w-auto">
@@ -174,21 +185,21 @@ tailwind.config = {
         <button onclick="repeatLastInvoice()" class="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-1.5 rounded-lg hover:bg-amber-200 shadow-sm whitespace-nowrap"><i class="fa-solid fa-copy"></i> نسخ</button>
       </div>
       <div class="p-4 bg-slate-50 border-t border-gray-200 space-y-3">
-        <div class="flex justify-between items-center text-xs font-bold text-gray-600"><span>المجموع الفرعي:</span><span id="cartSubtotal">0 ل.س</span></div>
+        <div class="flex justify-between items-center text-xs font-bold text-gray-600"><span>المجموع الفرعي:</span><span id="cartSubtotal">0 ل.س.ج</span></div>
         <div class="flex justify-between items-center gap-2">
           <label class="text-xs font-bold text-gray-600 whitespace-nowrap">خصم:</label>
-          <input type="number" id="posDiscount" oninput="renderCart()" placeholder="0" class="w-full bg-white border border-gray-300 rounded-lg p-1.5 text-xs font-bold text-left">
+          <input type="number" step="any" id="posDiscount" oninput="renderCart()" placeholder="0" class="w-full bg-white border border-gray-300 rounded-lg p-1.5 text-xs font-bold text-left">
         </div>
-        <div class="flex justify-between items-center text-sm font-bold text-gray-600 border-t pt-2"><span>إجمالي الفاتورة:</span><span id="cartTotal" class="text-2xl font-black text-ashour">0 ل.س</span></div>
+        <div class="flex justify-between items-center text-sm font-bold text-gray-600 border-t pt-2"><span>إجمالي الفاتورة:</span><span id="cartTotal" class="text-2xl font-black text-ashour">0 ل.س.ج</span></div>
         <div class="bg-white border border-gray-200 rounded-xl p-3 space-y-2">
           <label class="block text-xs font-bold text-gray-600">المبلغ المدفوع نقداً:</label>
-          <input type="number" id="posPaidAmount" min="0" placeholder="مثال: 50000" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 text-sm font-bold focus:border-ashour">
+          <input type="number" step="any" min="0" id="posPaidAmount" placeholder="مثال: 50000" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 text-sm font-bold focus:border-ashour">
           <div class="flex gap-1 overflow-x-auto pt-1">
             <button onclick="setPaidExact()" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] px-2 py-1 rounded font-bold whitespace-nowrap">نقدي كامل</button>
-            <button onclick="setPaidAmount(50000)" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[10px] px-2 py-1 rounded font-bold">50 ألف</button>
-            <button onclick="setPaidAmount(100000)" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[10px] px-2 py-1 rounded font-bold">100 ألف</button>
-            <button onclick="setPaidAmount(200000)" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[10px] px-2 py-1 rounded font-bold">200 ألف</button>
-            <button onclick="setPaidAmount(500000)" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[10px] px-2 py-1 rounded font-bold">500 ألف</button>
+            <button onclick="setPaidAmount(50)" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[10px] px-2 py-1 rounded font-bold">50</button>
+            <button onclick="setPaidAmount(100)" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[10px] px-2 py-1 rounded font-bold">100</button>
+            <button onclick="setPaidAmount(500)" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[10px] px-2 py-1 rounded font-bold">500</button>
+            <button onclick="setPaidAmount(1000)" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[10px] px-2 py-1 rounded font-bold">1,000</button>
           </div>
           <p class="text-[10px] text-gray-500 font-bold">المتبقي يُسجّل تلقائياً كدين على الزبون.</p>
         </div>
@@ -251,7 +262,7 @@ tailwind.config = {
   <!-- CLIENTS -->
   <div id="view-clients" class="tab-view hidden space-y-4">
     <div class="flex flex-wrap justify-between items-center gap-3 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
-      <div><h2 class="text-xl font-black text-ashour">إدارة الزبائن والموزعين والديون</h2><p class="text-xs text-gray-500">متابعة الأرصدة، المرتجعات، تسديد الدفعات وكشوف الحسابات</p></div>
+      <div><h2 class="text-xl font-black text-ashour">إدارة الزبائن والموزعين والديون</h2><p class="text-xs text-gray-500">متابعة الأرصدة، المرتجعات، تسديد الدفعات وكشوف الحسابات الكاملة</p></div>
       <div class="flex gap-2">
         <input type="text" id="clientSearch" oninput="renderClientsGrid()" placeholder="بحث..." class="bg-gray-50 border border-gray-300 rounded-xl px-3 py-2.5 text-xs font-bold w-40">
         <button onclick="openClientModal()" class="bg-ashour hover:bg-ashour-dark text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1 shadow-sm"><i class="fa-solid fa-user-plus"></i> إضافة زبون</button>
@@ -262,17 +273,22 @@ tailwind.config = {
 
   <!-- COMPANIES (SUPPLIERS) -->
   <div id="view-companies" class="tab-view hidden space-y-4">
-    <div class="flex flex-wrap justify-between items-center gap-3 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
-      <div>
-        <h2 class="text-xl font-black text-ashour"><i class="fa-solid fa-building text-ashour-gold"></i> الشركات الموردة ودورة التوزيع</h2>
-        <p class="text-xs text-gray-500">إدارة الشركات، أرقام التواصل، مواعيد نزول البضاعة، ومنتجات كل شركة مع سعر المستهلك</p>
+    <div id="companiesListSection" class="space-y-4">
+      <div class="flex flex-wrap justify-between items-center gap-3 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
+        <div>
+          <h2 class="text-xl font-black text-ashour"><i class="fa-solid fa-building text-ashour-gold"></i> الشركات الموردة ودورة التوزيع</h2>
+          <p class="text-xs text-gray-500">اضغط على أي شركة لفتح صفحتها الكاملة وتفاصيلها ومنتجاتها وصورها من الاستوديو</p>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <input type="text" id="companySearch" oninput="renderCompaniesGrid()" placeholder="بحث عن شركة أو موزع أو منتج..." class="bg-gray-50 border border-gray-300 rounded-xl px-3 py-2.5 text-xs font-bold w-52">
+          <button onclick="openCompanyModal()" class="bg-ashour hover:bg-ashour-dark text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1 shadow-sm"><i class="fa-solid fa-plus"></i> إضافة شركة</button>
+        </div>
       </div>
-      <div class="flex gap-2 flex-wrap">
-        <input type="text" id="companySearch" oninput="renderCompaniesGrid()" placeholder="بحث عن شركة أو منتج..." class="bg-gray-50 border border-gray-300 rounded-xl px-3 py-2.5 text-xs font-bold w-48">
-        <button onclick="openCompanyModal()" class="bg-ashour hover:bg-ashour-dark text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1 shadow-sm"><i class="fa-solid fa-plus"></i> إضافة شركة</button>
-      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="companiesGrid"></div>
     </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="companiesGrid"></div>
+
+    <!-- صفحة الشركة الكاملة عند الضغط عليها -->
+    <div id="companyDetailPage" class="hidden space-y-4"></div>
   </div>
 
   <!-- EXPENSES -->
@@ -361,7 +377,7 @@ tailwind.config = {
     <div class="space-y-3 text-xs font-bold">
       <div><label class="block mb-1">اسم المنتج:</label><input type="text" id="qpName" placeholder="مثال: علبة بسكويت" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
       <div class="grid grid-cols-2 gap-2">
-        <div><label class="block mb-1">السعر:</label><input type="number" id="qpPrice" placeholder="0" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+        <div><label class="block mb-1">السعر (ل.س.ج):</label><input type="number" step="any" id="qpPrice" placeholder="0" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
         <div><label class="block mb-1">العدد:</label><input type="number" id="qpQty" value="1" min="1" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
       </div>
     </div>
@@ -386,7 +402,7 @@ tailwind.config = {
       </div>
       <div><label class="block mb-1">اسم الصنف / المأخوذ:</label><input type="text" id="dsName" placeholder="مثال: علبة بسكويت" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
       <div class="grid grid-cols-2 gap-2">
-        <div><label class="block mb-1">السعر للقطعة:</label><input type="number" id="dsPrice" placeholder="0" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+        <div><label class="block mb-1">السعر للقطعة (ل.س.ج):</label><input type="number" step="any" id="dsPrice" placeholder="0" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
         <div><label class="block mb-1">العدد:</label><input type="number" id="dsQty" value="1" min="1" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
       </div>
       <div><label class="block mb-1">ملاحظة (اختياري):</label><input type="text" id="dsNote" placeholder="مثال: أخذ صديق / شخص عابر" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
@@ -415,8 +431,8 @@ tailwind.config = {
         <div>
           <label class="block mb-1">صورة المنتج:</label>
           <div class="flex gap-1">
-            <input type="text" id="prodImageInput" placeholder="رابط URL..." class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 text-[10px]">
-            <label class="bg-gray-200 hover:bg-gray-300 px-2.5 py-2 rounded-xl cursor-pointer text-gray-700 flex items-center justify-center" title="اختر من الجهاز">
+            <input type="text" id="prodImageInput" placeholder="رابط أو صورة من الاستوديو..." class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 text-[10px]">
+            <label class="bg-gray-200 hover:bg-gray-300 px-2.5 py-2 rounded-xl cursor-pointer text-gray-700 flex items-center justify-center" title="اختر من الاستوديو">
               <i class="fa-solid fa-image"></i>
               <input type="file" accept="image/*" onchange="handleImageUpload(event)" class="hidden">
             </label>
@@ -425,10 +441,10 @@ tailwind.config = {
       </div>
       <div><label class="block mb-1 text-indigo-700">اسم المنتج:</label><input type="text" id="prodNameInput" class="w-full bg-indigo-50 border border-indigo-300 text-indigo-900 rounded-xl p-2.5"></div>
       <div><label class="block mb-1">الفئة:</label><input type="text" id="prodCatInput" list="categoryList" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-      <div><label class="block mb-1">سعر الشراء (التكلفة):</label><input type="number" id="prodCostInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">سعر الشراء (التكلفة):</label><input type="number" step="any" id="prodCostInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
       <div class="grid grid-cols-2 gap-2 bg-amber-50 p-2 rounded-xl border border-amber-200">
-        <div><label class="block mb-1 text-emerald-700">سعر التجزئة:</label><input type="number" id="prodRetailInput" class="w-full bg-white border border-emerald-300 text-emerald-900 rounded-xl p-2.5 font-black"></div>
-        <div><label class="block mb-1 text-amber-700">سعر الجملة:</label><input type="number" id="prodWholesaleInput" class="w-full bg-white border border-amber-300 text-amber-900 rounded-xl p-2.5 font-black"></div>
+        <div><label class="block mb-1 text-emerald-700">سعر التجزئة:</label><input type="number" step="any" id="prodRetailInput" class="w-full bg-white border border-emerald-300 text-emerald-900 rounded-xl p-2.5 font-black"></div>
+        <div><label class="block mb-1 text-amber-700">سعر الجملة:</label><input type="number" step="any" id="prodWholesaleInput" class="w-full bg-white border border-amber-300 text-amber-900 rounded-xl p-2.5 font-black"></div>
       </div>
     </div>
     <div class="flex gap-2 pt-2">
@@ -443,7 +459,7 @@ tailwind.config = {
   <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-xl space-y-4">
     <h3 class="text-lg font-black text-purple-700"><i class="fa-solid fa-brain"></i> الإدخال الذكي المتقدم</h3>
     <p class="text-xs text-gray-500 leading-relaxed">اكتب كل صنف في سطر بصيغة مثل: <b class="text-purple-800">كيكتي العدد 8</b> أو <b class="text-purple-800">كرنشي العدد 5</b> وسيتم استخراج العدد وإضافته تلقائياً إلى الفاتورة.</p>
-    <textarea id="smartInputText" rows="5" placeholder="كيكتي العدد 8&#10;كرنشي العدد 5&#10;تورتيز 3" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-3 text-xs font-bold"></textarea>
+    <textarea id="smartInputText" rows="5" placeholder="كيكتي العدد 8&#10;كرنشي العدد 5" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-3 text-xs font-bold"></textarea>
     <div class="flex gap-2">
       <button onclick="processSmartInput()" class="flex-1 bg-purple-600 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-purple-700">معالجة وإضافة للفاتورة</button>
       <button onclick="closeModal('smartInputModal')" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-xs">إلغاء</button>
@@ -458,16 +474,20 @@ tailwind.config = {
     <input type="hidden" id="compEditId">
     <div class="space-y-3 text-xs font-bold">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div><label class="block mb-1">اسم الشركة:</label><input type="text" id="compNameInput" placeholder="مثال: شركة النجوم الغذائية" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-        <div><label class="block mb-1">رقم هاتف الشركة / المندوب:</label><input type="text" id="compPhoneInput" placeholder="09xxxxxxxx" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+        <div><label class="block mb-1">اسم الشركة:</label><input type="text" id="compNameInput" placeholder="مثال: شركة الشام الغذائية" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+        <div><label class="block mb-1">أرقام الشركة / الهاتف:</label><input type="text" id="compPhoneInput" placeholder="مثال: 0982572810 / 0959248901" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div><label class="block mb-1">عنوان الشركة المصنّعة:</label><input type="text" id="compAddressInput" placeholder="مثال: المدينة الصناعية / دمشق" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+        <div><label class="block mb-1">اسم الموزع / المندوب:</label><input type="text" id="compDistributorInput" placeholder="مثال: أبو أحمد الموزع" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
       </div>
       <div>
         <label class="block mb-1">دورة التوزيع (كل متى يأتون لتنزيل البضاعة؟):</label>
-        <input type="text" id="compCycleInput" placeholder="مثال: كل أسبوع يوم الثلاثاء، أو كل 4 أيام، أو كل شهر" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5">
+        <input type="text" id="compCycleInput" placeholder="مثال: كل أسبوع يوم السبت، أو كل 4 أيام" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5">
       </div>
       <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3 space-y-2">
         <div class="flex justify-between items-center">
-          <label class="text-ashour font-black">منتجات الشركة وسعر المستهلك:</label>
+          <label class="text-ashour font-black">منتجات الشركة وسعر المستهلك وصورها:</label>
           <button type="button" onclick="addCompanyProductRow()" class="bg-ashour text-white px-2.5 py-1 rounded-lg text-[11px] font-bold hover:bg-ashour-dark"><i class="fa-solid fa-plus"></i> إضافة منتج</button>
         </div>
         <div id="compProductsRows" class="space-y-2"></div>
@@ -486,7 +506,7 @@ tailwind.config = {
     <h3 class="text-lg font-black text-purple-700"><i class="fa-solid fa-wallet"></i> تسجيل مصروف</h3>
     <div class="space-y-3 text-xs font-bold">
       <div><label class="block mb-1">بند المصروف:</label><input type="text" id="expTitle" placeholder="أجور نقل، كهرباء..." class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-      <div><label class="block mb-1">المبلغ:</label><input type="number" id="expAmount" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">المبلغ (ل.س.ج):</label><input type="number" step="any" id="expAmount" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
       <div><label class="block mb-1">ملاحظات:</label><input type="text" id="expNotes" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
     </div>
     <div class="flex gap-2 pt-2">
@@ -513,34 +533,34 @@ tailwind.config = {
 <div id="receiptModal" onclick="if(event.target===this)closeModal('receiptModal')" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4 overflow-y-auto" style="display:none">
   <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl relative my-8">
     <button onclick="closeModal('receiptModal')" class="absolute left-4 top-4 text-gray-400 hover:text-gray-700 text-xl font-bold">&times;</button>
-    <div id="printableReceipt" class="p-3 font-mono text-xs text-black border border-dashed border-gray-300 bg-white">
+    <div id="printableReceipt" class="p-4 text-xs text-black border border-dashed border-gray-300 bg-white rounded-lg">
       <div class="text-center space-y-1 mb-3">
-        <h2 id="recStoreName" class="text-base font-black tracking-wider"></h2>
-        <p id="recStorePhone" class="text-[10px]"></p>
-        <p id="recStoreAddress" class="text-[10px]"></p>
+        <h2 id="recStoreName" class="text-lg font-black text-black leading-snug"></h2>
+        <p id="recStorePhone" class="text-[11px] font-bold text-gray-800"></p>
+        <p id="recStoreAddress" class="text-[11px] font-bold text-gray-800"></p>
         <div class="border-b border-black border-dashed my-2"></div>
       </div>
-      <div class="space-y-1 text-[11px] mb-3">
-        <div class="flex justify-between"><span>رقم الفاتورة:</span><span id="recNum" class="font-bold"></span></div>
+      <div class="space-y-1 text-[11px] mb-3 font-bold">
+        <div class="flex justify-between"><span>رقم الفاتورة:</span><span id="recNum" class="font-black"></span></div>
         <div class="flex justify-between"><span>التاريخ:</span><span id="recDate"></span></div>
-        <div class="flex justify-between"><span>الزبون:</span><span id="recClient" class="font-bold"></span></div>
-        <div class="flex justify-between"><span>طريقة الدفع:</span><span id="recPayType" class="font-bold"></span></div>
+        <div class="flex justify-between"><span>الزبون:</span><span id="recClient" class="font-black"></span></div>
+        <div class="flex justify-between"><span>طريقة الدفع:</span><span id="recPayType" class="font-black"></span></div>
       </div>
       <div class="border-b border-black border-dashed my-2"></div>
-      <table class="w-full text-right text-[11px] mb-3">
+      <table class="w-full text-right text-[11px] mb-3 font-bold">
         <thead><tr class="border-b border-black"><th class="py-1">الصنف</th><th class="py-1 text-center">كمية</th><th class="py-1 text-left">سعر</th><th class="py-1 text-left">إجمالي</th></tr></thead>
         <tbody id="recItemsBody"></tbody>
       </table>
       <div class="border-b border-black border-dashed my-2"></div>
-      <div class="space-y-1 text-[11px]">
+      <div class="space-y-1 text-[11px] font-bold">
         <div id="recDiscountRow" class="flex justify-between hidden"><span>الخصم:</span><span id="recDiscount"></span></div>
-        <div class="flex justify-between font-bold text-sm"><span>المجموع الكلي:</span><span id="recTotal"></span></div>
+        <div class="flex justify-between font-black text-sm"><span>المجموع الكلي:</span><span id="recTotal"></span></div>
         <div id="recPaidRow" class="flex justify-between"><span>المدفوع:</span><span id="recPaid"></span></div>
         <div id="recRemainingRow" class="flex justify-between"><span>المتبقي (دين):</span><span id="recRemaining"></span></div>
-        <div id="recTotalDebtRow" class="flex justify-between font-bold border-t border-black pt-1 mt-1"><span>إجمالي دين الزبون:</span><span id="recTotalClientDebt"></span></div>
+        <div id="recTotalDebtRow" class="flex justify-between font-black border-t border-black pt-1 mt-1"><span>إجمالي دين الزبون:</span><span id="recTotalClientDebt"></span></div>
       </div>
       <div class="border-b border-black border-dashed my-3"></div>
-      <div class="text-center text-[10px] space-y-1"><p class="font-bold">شكراً لتعاملكم معنا!</p></div>
+      <div class="text-center text-[11px] space-y-1"><p class="font-black">شكراً لتعاملكم معنا!</p></div>
     </div>
     <div class="mt-4 grid grid-cols-2 gap-2">
       <button onclick="saveReceiptAsImage()" class="bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-emerald-700 transition flex items-center justify-center gap-1"><i class="fa-solid fa-image"></i> حفظ في الاستوديو</button>
@@ -565,9 +585,9 @@ tailwind.config = {
           <label class="flex items-center gap-2 p-2.5 bg-gray-50 border border-gray-300 rounded-xl cursor-pointer hover:bg-amber-50 hover:border-amber-500 transition"><input type="radio" name="clientTypeRadio" value="wholesale"><span>موزع جملة</span></label>
         </div>
       </div>
-      <div><label class="block mb-1">الهاتف:</label><input type="text" id="clientPhoneInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-      <div><label class="block mb-1">العنوان:</label><input type="text" id="clientAddressInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-      <div><label class="block mb-1">رصيد افتتاحي (دين سابق):</label><input type="number" id="clientOpeningInput" value="0" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">رقم الهاتف:</label><input type="text" id="clientPhoneInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">عنوان المنزل أو المحل:</label><input type="text" id="clientAddressInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">رصيد افتتاحي (دين سابق):</label><input type="number" step="any" id="clientOpeningInput" value="0" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
     </div>
     <div class="flex gap-2 pt-2">
       <button onclick="saveClient()" class="flex-1 bg-ashour text-white py-2.5 rounded-xl font-bold text-xs hover:bg-ashour-dark">حفظ</button>
@@ -576,43 +596,51 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- Ledger & Returns Modal -->
-<div id="ledgerModal" onclick="if(event.target===this)closeModal('ledgerModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4 overflow-y-auto" style="display:none">
-  <div class="bg-white rounded-2xl max-w-3xl w-full p-5 shadow-xl space-y-4 my-8">
-    <div class="flex justify-between items-center border-b pb-3 border-gray-100">
-      <div><h3 id="ledgerClientName" class="text-lg font-black text-ashour">كشف حساب</h3><p id="ledgerClientInfo" class="text-xs text-gray-500"></p></div>
-      <button onclick="closeModal('ledgerModal')" class="text-gray-400 hover:text-gray-700 text-xl font-bold">&times;</button>
+<!-- Full Dedicated Client Statement & Returns Page Modal -->
+<div id="ledgerModal" onclick="if(event.target===this)closeModal('ledgerModal')" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-2 sm:p-4 overflow-y-auto" style="display:none">
+  <div class="bg-gray-50 rounded-2xl max-w-4xl w-full p-4 sm:p-6 shadow-2xl space-y-4 my-6 border border-ashour/20">
+    <div class="bg-white rounded-2xl p-4 border border-gray-200 flex flex-wrap justify-between items-start gap-3">
+      <div class="space-y-1">
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 id="ledgerClientName" class="text-xl font-black text-ashour">كشف حساب الزبون</h3>
+          <span id="ledgerClientBadge" class="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800"></span>
+        </div>
+        <p id="ledgerClientPhone" class="text-xs text-gray-600 font-bold"></p>
+        <p id="ledgerClientAddress" class="text-xs text-gray-600 font-bold"></p>
+      </div>
+      <button onclick="closeModal('ledgerModal')" class="bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 w-9 h-9 rounded-xl flex items-center justify-center text-lg font-black transition">&times;</button>
     </div>
 
-    <div class="flex gap-2 border-b border-gray-100 pb-2 text-xs font-black">
-      <button id="ledgerTabStatementBtn" onclick="switchLedgerSubTab('statement')" class="px-3.5 py-2 rounded-xl bg-ashour text-white transition"><i class="fa-solid fa-file-lines"></i> كشف الحساب والفواتير</button>
-      <button id="ledgerTabReturnsBtn" onclick="switchLedgerSubTab('returns')" class="px-3.5 py-2 rounded-xl bg-amber-100 text-amber-900 hover:bg-amber-200 transition"><i class="fa-solid fa-rotate-left"></i> المرتجعات</button>
-    </div>
+    <!-- ملخص حساب الزبون -->
+    <div id="ledgerSummaryCards" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center text-xs font-bold"></div>
 
-    <div class="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-center justify-between gap-3 flex-wrap">
-      <div class="text-xs font-bold text-amber-900"><span>الدين الحالي: </span><span id="ledgerDebtBalance" class="text-base font-black text-red-600"></span></div>
-      <div class="flex gap-2">
-        <input type="number" id="payDebtAmount" placeholder="مبلغ التسديد" class="bg-white border border-amber-300 rounded-lg px-3 py-1.5 text-xs font-bold w-32">
-        <button onclick="recordDebtPayment()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition">تسديد دفعة</button>
+    <div class="flex flex-wrap items-center justify-between gap-2 bg-white p-2.5 rounded-2xl border border-gray-200">
+      <div class="flex gap-2 text-xs font-black">
+        <button id="ledgerTabStatementBtn" onclick="switchLedgerSubTab('statement')" class="px-3.5 py-2 rounded-xl bg-ashour text-white transition"><i class="fa-solid fa-file-lines"></i> كشف الحساب والفواتير</button>
+        <button id="ledgerTabReturnsBtn" onclick="switchLedgerSubTab('returns')" class="px-3.5 py-2 rounded-xl bg-amber-100 text-amber-900 hover:bg-amber-200 transition"><i class="fa-solid fa-rotate-left"></i> المرتجعات</button>
+      </div>
+      <div class="flex gap-2 items-center">
+        <input type="number" step="any" id="payDebtAmount" placeholder="مبلغ التسديد" class="bg-gray-50 border border-amber-300 rounded-xl px-3 py-1.5 text-xs font-bold w-32">
+        <button onclick="recordDebtPayment()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition">تسديد دفعة</button>
       </div>
     </div>
 
-    <!-- Sub-tab 1: Statement & Invoices with images -->
-    <div id="ledgerStatementPanel" class="space-y-3">
-      <div class="max-h-72 overflow-y-auto border border-gray-200 rounded-xl">
+    <!-- Sub-tab 1: Statement & Invoices -->
+    <div id="ledgerStatementPanel" class="bg-white rounded-2xl border border-gray-200 p-3 space-y-3">
+      <div class="max-h-80 overflow-y-auto border border-gray-200 rounded-xl">
         <table class="w-full text-right text-xs">
-          <thead class="bg-gray-100 font-bold text-gray-700 sticky top-0">
-            <tr><th class="p-2">التاريخ</th><th class="p-2">الحركة / الفاتورة</th><th class="p-2">مدين</th><th class="p-2">دائن</th><th class="p-2 text-center">الفاتورة / إجراء</th></tr>
+          <thead class="bg-ashour text-white font-bold sticky top-0">
+            <tr><th class="p-2.5">التاريخ</th><th class="p-2.5">التفاصيل / الفاتورة</th><th class="p-2.5">مدين</th><th class="p-2.5">دائن</th><th class="p-2.5 text-center">إجراء</th></tr>
           </thead>
           <tbody id="ledgerTableBody" class="divide-y divide-gray-100 font-bold"></tbody>
         </table>
       </div>
     </div>
 
-    <!-- Sub-tab 2: Client Returns -->
-    <div id="ledgerReturnsPanel" class="hidden space-y-3">
-      <p class="text-xs text-gray-500 font-bold">المنتجات المتبقية بذمة الزبون/الموزع من فواتيره — اضغط على إرجاع قطعة واحدة أو عدد محدد لخصم سعرها فوراً من حسابه:</p>
-      <div id="clientReturnableItemsList" class="space-y-2 max-h-64 overflow-y-auto"></div>
+    <!-- Sub-tab 2: Client Returns with +/- buttons -->
+    <div id="ledgerReturnsPanel" class="hidden bg-white rounded-2xl border border-gray-200 p-3 space-y-3">
+      <p class="text-xs text-gray-600 font-bold">تحكم بالمرتجعات لكل منتج: اضغط <b class="text-red-600">(+)</b> لإرجاع قطعة وخصم سعرها من حساب الزبون، أو <b class="text-emerald-700">(-)</b> لحذف/إلغاء قطعة مرتجعة وإعادة سعرها لحسابه:</p>
+      <div id="clientReturnableItemsList" class="space-y-2 max-h-72 overflow-y-auto"></div>
       <div id="clientReturnsHistoryBox" class="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-1.5 text-xs">
         <div class="font-black text-gray-700">سجل المرتجعات السابقة لهذا الزبون:</div>
         <div id="clientReturnsHistoryList" class="space-y-1 font-bold text-gray-600"></div>
@@ -624,9 +652,30 @@ tailwind.config = {
 <datalist id="categoryList"></datalist>
 
 <script>
-/* ==================== Utilities ==================== */
+/* ==================== Math & Accounting Engine ==================== */
+const CURRENCY = 'ل.س.ج';
 const $ = id => document.getElementById(id);
-const fmt = n => (Number(n) || 0).toLocaleString('en-US');
+
+function toNum(val) {
+  const n = Number(val);
+  return Number.isFinite(n) ? n : 0;
+}
+function roundMoney(val) {
+  return Math.round((toNum(val) + Number.EPSILON) * 100) / 100;
+}
+function calcLineTotal(price, qty) {
+  return roundMoney(toNum(price) * toNum(qty));
+}
+function sumList(arr, getter) {
+  let total = 0;
+  for (let i = 0; i < arr.length; i++) {
+    total = roundMoney(total + toNum(getter(arr[i])));
+  }
+  return total;
+}
+const fmt = n => roundMoney(n).toLocaleString('en-US');
+const fmtCur = n => `${fmt(n)} ${CURRENCY}`;
+
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
@@ -642,7 +691,6 @@ function dayKey(ts) {
   const d = new Date(ts);
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
-function todayKey() { return dayKey(Date.now()); }
 function nowStr() { return new Date().toLocaleString('ar-SY'); }
 const warn = (title, text, icon='warning') => Swal.fire({ icon, title, text, confirmButtonColor:'#0F5C4E' });
 const toast = (title, icon='success') => Swal.fire({ toast:true, position:'top-end', icon, title, showConfirmButton:false, timer:1600 });
@@ -676,23 +724,23 @@ const IMPORTED_PRODUCTS = [
 /* ==================== State ==================== */
 let state = {
   pinHash: null, pinLength: 4, pinAttempts: 0, pinLockUntil: 0,
-  storeInfo: { name:'مركز عاشور للجملة', phone:'0991234567', address:'السوق المركزي - صالة الجملة' },
+  storeInfo: { name:'مركز عاشور للتجارة', phone:'0991234567', address:'السوق المركزي - صالة الجملة' },
   products: [], clients: [], invoices: [], expenses: [], payments: [], returns: [], directSales: [], companies: [], auditLog: [],
   invoiceCounter: 1000,
-  cart: [], selectedPosCategory: 'الكل', currentLedgerClientId: null, currentReceiptInv: null
+  cart: [], selectedPosCategory: 'الكل', currentLedgerClientId: null, currentReceiptInv: null, activeCompanyId: null
 };
 
 function defaultState() {
   return {
     pinHash: null, pinLength: 4, pinAttempts: 0, pinLockUntil: 0,
-    storeInfo: { name:'مركز عاشور للجملة', phone:'0991234567', address:'السوق المركزي - صالة الجملة' },
+    storeInfo: { name:'مركز عاشور للتجارة', phone:'0991234567', address:'السوق المركزي - صالة الجملة' },
     products: IMPORTED_PRODUCTS.map((p,i) => ({
       id: (i+1).toString(), sku: (101+i).toString(), name: p.name, category: p.category,
       cost: 0, retailPrice: 0, wholesalePrice: 0, image: p.image || ''
     })),
     clients: [
       { id:'c1', name:'زبون نقدي مباشر', type:'retail', phone:'-', address:'-', openingDebt:0 },
-      { id:'c2', name:'سوبرماركت البركة (موزع)', type:'wholesale', phone:'0998877665', address:'شارع التجارة', openingDebt:150000 }
+      { id:'c2', name:'سوبرماركت البركة (موزع)', type:'wholesale', phone:'0998877665', address:'شارع التجارة', openingDebt:150 }
     ],
     invoices: [], expenses: [], payments: [], returns: [], directSales: [],
     companies: [
@@ -700,16 +748,18 @@ function defaultState() {
         id: 'comp_1',
         name: 'شركة الشام الغذائية',
         phone: '0982572810',
+        address: 'المدينة الصناعية - دمشق',
+        distributorName: 'أبو خالد الموزع',
         cycle: 'كل أسبوع (يوم السبت)',
         products: [
-          { name: 'بسكويت كيكتي علبة', consumerPrice: 3500 },
-          { name: 'بسكويت جنتي', consumerPrice: 2000 }
+          { id: 'cp_1', name: 'بسكويت كيكتي علبة', consumerPrice: 35, image: '' },
+          { id: 'cp_2', name: 'بسكويت جنتي', consumerPrice: 20, image: '' }
         ]
       }
     ],
     auditLog: [{ ts: Date.now(), date: nowStr(), type:'النظام', details:'تم استيراد المنتجات وبدء تشغيل النظام', status:'مكتمل' }],
     invoiceCounter: 1000,
-    cart: [], selectedPosCategory:'الكل', currentLedgerClientId: null, currentReceiptInv: null
+    cart: [], selectedPosCategory:'الكل', currentLedgerClientId: null, currentReceiptInv: null, activeCompanyId: null
   };
 }
 
@@ -808,7 +858,7 @@ async function submitPin() {
     clearPin();
     resetAutoLock();
   } else {
-    state.pinAttempts = (state.pinAttempts || 0) + 1;
+    state.pinAttempts = toNum(state.pinAttempts) + 1;
     const dotsContainer = $('pinDots');
     dotsContainer.classList.add('shake');
     document.querySelectorAll('.pin-dot').forEach(d => {
@@ -859,6 +909,11 @@ function switchTab(tabId) {
   if (view) view.classList.remove('hidden');
   const btn = $('tab-' + tabId);
   if (btn) btn.classList.add('bg-white/20','active');
+  if (tabId === 'companies') {
+    state.activeCompanyId = null;
+    $('companyDetailPage').classList.add('hidden');
+    $('companiesListSection').classList.remove('hidden');
+  }
   if (tabId === 'settings') loadStoreInfoToSettings();
   if (tabId === 'reports') renderReports();
   renderAll();
@@ -891,11 +946,14 @@ function toggleProdCatDropdown() {
 function getClientDebt(clientId) {
   const c = state.clients.find(x => x.id === clientId);
   if (!c) return 0;
-  let bal = Number(c.openingDebt) || 0;
-  state.invoices.forEach(i => { if (i.clientId === clientId && i.status === 'active') bal += (i.remaining || 0); });
-  state.payments.forEach(p => { if (p.clientId === clientId) bal -= (p.amount || 0); });
-  state.returns.forEach(r => { if (r.clientId === clientId) bal -= (r.amount || 0); });
-  return bal;
+  const opening = toNum(c.openingDebt);
+  const invRemaining = sumList(
+    state.invoices.filter(i => i.clientId === clientId && i.status === 'active'),
+    i => i.remaining
+  );
+  const paidTotal = sumList(state.payments.filter(p => p.clientId === clientId), p => p.amount);
+  const retTotal = sumList(state.returns.filter(r => r.clientId === clientId), r => r.amount);
+  return roundMoney(opening + invRemaining - paidTotal - retTotal);
 }
 
 /* ==================== POS ==================== */
@@ -922,7 +980,7 @@ function populatePosClients() {
     const debt = getClientDebt(c.id);
     return `<div onclick="selectClient('${esc(c.id)}', '${esc(c.name)} (${c.type === 'wholesale' ? 'موزع' : 'تجزئة'})')" class="p-2.5 hover:bg-emerald-50 cursor-pointer text-xs font-bold flex justify-between items-center">
       <span>${esc(c.name)} (${c.type === 'wholesale' ? 'موزع' : 'تجزئة'})</span>
-      <span class="text-[10px] text-gray-500">دين: ${fmt(debt)}</span>
+      <span class="text-[10px] text-gray-500">دين: ${fmtCur(debt)}</span>
     </div>`;
   }).join('');
 
@@ -976,7 +1034,7 @@ function renderPosProducts() {
   }
 
   $('posProductsGrid').innerHTML = filtered.map(p => {
-    const price = Number(p[priceKey]) || 0;
+    const price = toNum(p[priceKey]);
     return `
     <div onclick="addToCart('${esc(p.id)}')" class="bg-white border hover:border-ashour p-2.5 rounded-2xl shadow-sm cursor-pointer transition flex flex-col justify-between relative group border-gray-200 card-hover">
       <button onclick="event.stopPropagation(); openProductModal('${esc(p.id)}')" class="absolute top-2 left-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white w-7 h-7 rounded-full flex items-center justify-center z-10 shadow-sm transition" title="تعديل">
@@ -990,7 +1048,7 @@ function renderPosProducts() {
         </div>
       </div>
       <div class="mt-2 flex items-end justify-between border-t border-gray-100 pt-2">
-        <span class="text-xs ${price > 0 ? 'text-ashour font-black' : 'text-red-500 font-bold'}">${price > 0 ? fmt(price) + ' ل.س' : 'حدد السعر'}</span>
+        <span class="text-xs ${price > 0 ? 'text-ashour font-black' : 'text-red-500 font-bold'}">${price > 0 ? fmtCur(price) : 'حدد السعر'}</span>
         <div class="w-6 h-6 bg-ashour/10 text-ashour rounded-md flex items-center justify-center group-hover:bg-ashour group-hover:text-white transition"><i class="fa-solid fa-plus text-xs"></i></div>
       </div>
     </div>`;
@@ -1020,13 +1078,13 @@ function handleQuickEntry(ev) {
 
   const client = getSelectedPosClient();
   const priceKey = client.type === 'wholesale' ? 'wholesalePrice' : 'retailPrice';
-  if (!(Number(product[priceKey]) > 0)) {
+  if (!(toNum(product[priceKey]) > 0)) {
     return Swal.fire({ icon:'info', title:'السعر غير محدد', text:`حدّد سعر ${product.name} أولاً.`, confirmButtonColor:'#0F5C4E' })
       .then(() => openProductModal(product.id));
   }
 
   const existing = state.cart.find(i => i.productId === product.id && !i.isQuickOnly);
-  if (existing) existing.qty += qty;
+  if (existing) existing.qty = roundMoney(existing.qty + qty);
   else state.cart.push({ productId: product.id, qty });
 
   renderCart();
@@ -1040,14 +1098,14 @@ function addToCart(productId) {
   const client = getSelectedPosClient();
   const priceKey = client.type === 'wholesale' ? 'wholesalePrice' : 'retailPrice';
 
-  if (!(Number(product[priceKey]) > 0)) {
+  if (!(toNum(product[priceKey]) > 0)) {
     return Swal.fire({ icon:'info', title:'السعر غير محدد', text:'يرجى تحديد السعر أولاً.', confirmButtonColor:'#0F5C4E' })
       .then(() => openProductModal(productId));
   }
 
   const existing = state.cart.find(i => i.productId === productId && !i.isQuickOnly);
   if (existing) {
-    existing.qty += 1;
+    existing.qty = roundMoney(existing.qty + 1);
   } else {
     state.cart.push({ productId, qty: 1 });
   }
@@ -1057,7 +1115,7 @@ function addToCart(productId) {
 function updateCartQty(cartKeyOrProdId, delta) {
   const item = state.cart.find(i => (i.quickId || i.productId) === cartKeyOrProdId);
   if (!item) return;
-  const newQty = item.qty + delta;
+  const newQty = roundMoney(toNum(item.qty) + toNum(delta));
   if (newQty <= 0) {
     state.cart = state.cart.filter(i => (i.quickId || i.productId) !== cartKeyOrProdId);
   } else {
@@ -1073,7 +1131,7 @@ function addQtyToLast(n) {
 }
 function multiplyLastQty(f) {
   if (!state.cart.length) return;
-  state.cart[state.cart.length - 1].qty *= f;
+  state.cart[state.cart.length - 1].qty = roundMoney(toNum(state.cart[state.cart.length - 1].qty) * toNum(f));
   renderCart();
 }
 function clearCart() { state.cart = []; $('posDiscount').value = ''; renderCart(); }
@@ -1084,7 +1142,7 @@ function getCartItemInfo(item, priceKey) {
       key: item.quickId,
       productId: item.quickId,
       name: item.name,
-      unitPrice: Number(item.price) || 0,
+      unitPrice: toNum(item.price),
       unitCost: 0,
       isQuickOnly: true
     };
@@ -1095,8 +1153,8 @@ function getCartItemInfo(item, priceKey) {
     key: p.id,
     productId: p.id,
     name: p.name,
-    unitPrice: Number(p[priceKey]) || 0,
-    unitCost: Number(p.cost) || 0,
+    unitPrice: toNum(p[priceKey]),
+    unitCost: toNum(p.cost),
     isQuickOnly: false
   };
 }
@@ -1108,12 +1166,13 @@ function cartTotals() {
   state.cart.forEach(item => {
     const info = getCartItemInfo(item, priceKey);
     if (!info) return;
-    subtotal += info.unitPrice * item.qty;
-    cost += info.unitCost * item.qty;
+    subtotal = roundMoney(subtotal + calcLineTotal(info.unitPrice, item.qty));
+    cost = roundMoney(cost + calcLineTotal(info.unitCost, item.qty));
   });
-  let discount = parseFloat($('posDiscount').value) || 0;
+  let discount = toNum($('posDiscount').value);
   discount = Math.max(0, Math.min(discount, subtotal));
-  return { subtotal, discount, total: subtotal - discount, cost, priceKey };
+  const total = roundMoney(subtotal - discount);
+  return { subtotal, discount, total, cost, priceKey };
 }
 
 function renderCart() {
@@ -1126,24 +1185,25 @@ function renderCart() {
     container.innerHTML = state.cart.map(item => {
       const info = getCartItemInfo(item, priceKey);
       if (!info) return '';
+      const lineSum = calcLineTotal(info.unitPrice, item.qty);
       return `
         <div class="py-2.5 flex items-center justify-between gap-2">
           <div class="flex-grow min-w-0">
             <h5 class="font-bold text-xs text-gray-800 truncate">${esc(info.name)} ${info.isQuickOnly ? '<span class="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded mr-1">سريع</span>' : ''}</h5>
-            <span class="text-[10px] text-gray-500 font-bold">${fmt(info.unitPrice)} ل.س × ${item.qty}</span>
+            <span class="text-[10px] text-gray-500 font-bold">${fmt(info.unitPrice)} × ${item.qty}</span>
           </div>
           <div class="flex items-center gap-1">
             <button onclick="updateCartQty('${esc(info.key)}', -1)" class="w-6 h-6 bg-gray-200 hover:bg-red-500 hover:text-white rounded text-xs font-black transition">−</button>
             <span class="w-7 text-center text-xs font-black">${item.qty}</span>
             <button onclick="updateCartQty('${esc(info.key)}', 1)" class="w-6 h-6 bg-gray-200 hover:bg-ashour hover:text-white rounded text-xs font-black transition">+</button>
           </div>
-          <div class="text-left font-black text-xs text-ashour min-w-[70px]">${fmt(info.unitPrice * item.qty)} ل.س</div>
+          <div class="text-left font-black text-xs text-ashour min-w-[85px]">${fmtCur(lineSum)}</div>
         </div>`;
     }).join('');
   }
 
-  $('cartSubtotal').textContent = fmt(subtotal) + ' ل.س';
-  $('cartTotal').textContent = fmt(total) + ' ل.س';
+  $('cartSubtotal').textContent = fmtCur(subtotal);
+  $('cartTotal').textContent = fmtCur(total);
   $('posPaidAmount').placeholder = `الكل (${fmt(total)})`;
 }
 
@@ -1163,8 +1223,8 @@ function repeatLastInvoice() {
   state.cart = last.items
     .filter(it => it.isQuickOnly || state.products.some(p => p.id === it.productId))
     .map(it => it.isQuickOnly
-      ? { isQuickOnly: true, quickId: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2,5), name: it.name, price: it.price, qty: it.qty }
-      : { productId: it.productId, qty: it.qty }
+      ? { isQuickOnly: true, quickId: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2,5), name: it.name, price: toNum(it.price), qty: toNum(it.qty) }
+      : { productId: it.productId, qty: toNum(it.qty) }
     );
 
   renderCart();
@@ -1172,7 +1232,7 @@ function repeatLastInvoice() {
 }
 
 function nextInvoiceNumber() {
-  state.invoiceCounter = (state.invoiceCounter || 1000) + 1;
+  state.invoiceCounter = toNum(state.invoiceCounter || 1000) + 1;
   return 'INV-' + state.invoiceCounter;
 }
 
@@ -1180,7 +1240,7 @@ function checkoutPOS() {
   if (!state.cart.length) return warn('السلة فارغة', 'أضف منتجات أولاً');
 
   const client = getSelectedPosClient();
-  const { total, cost, priceKey } = cartTotals();
+  const { total, discount, cost, priceKey } = cartTotals();
 
   for (const item of state.cart) {
     const info = getCartItemInfo(item, priceKey);
@@ -1188,23 +1248,25 @@ function checkoutPOS() {
     if (!(info.unitPrice > 0)) return warn('سعر غير محدد', info.name, 'error');
   }
 
-  const paidInput = parseFloat($('posPaidAmount').value);
-  let paid = isNaN(paidInput) ? total : Math.min(Math.max(paidInput, 0), total);
-  const remaining = total - paid;
+  const paidRaw = $('posPaidAmount').value.trim();
+  const paidInput = paidRaw === '' ? total : toNum(paidRaw);
+  const paid = roundMoney(Math.min(Math.max(paidInput, 0), total));
+  const remaining = roundMoney(total - paid);
 
   const items = state.cart.map(item => {
     const info = getCartItemInfo(item, priceKey);
+    const lineTotal = calcLineTotal(info.unitPrice, item.qty);
     return {
       productId: info.productId,
       name: info.name,
-      qty: item.qty,
+      qty: toNum(item.qty),
       price: info.unitPrice,
-      total: info.unitPrice * item.qty,
+      total: lineTotal,
       isQuickOnly: info.isQuickOnly
     };
   });
 
-  const profit = (total - cost);
+  const profit = roundMoney(total - cost);
 
   const inv = {
     id: nextInvoiceNumber(),
@@ -1213,12 +1275,12 @@ function checkoutPOS() {
     clientId: client.id,
     clientName: client.name,
     paymentType: remaining > 0 ? (paid > 0 ? 'partial' : 'debt') : 'cash',
-    items, discount: parseFloat($('posDiscount').value)||0, total, paid, remaining, profit,
+    items, discount, total, paid, remaining, profit,
     status: 'active'
   };
 
   state.invoices.push(inv);
-  logAudit('بيع فاتورة', `فاتورة ${inv.id} للزبون ${client.name} بمبلغ ${fmt(total)}`);
+  logAudit('بيع فاتورة', `فاتورة ${inv.id} للزبون ${client.name} بمبلغ ${fmtCur(total)}`);
   saveToStorage();
 
   showReceiptModal(inv);
@@ -1247,12 +1309,12 @@ function onDirectSaleProductChange() {
   const p = state.products.find(x => x.id === pid);
   if (!p) return;
   $('dsName').value = p.name;
-  $('dsPrice').value = Number(p.retailPrice) || Number(p.wholesalePrice) || 0;
+  $('dsPrice').value = toNum(p.retailPrice) || toNum(p.wholesalePrice) || 0;
 }
 
 function saveDirectSale() {
   const name = $('dsName').value.trim();
-  const price = parseFloat($('dsPrice').value) || 0;
+  const price = toNum($('dsPrice').value);
   const qty = parseInt($('dsQty').value, 10) || 1;
   const note = $('dsNote').value.trim();
   const pid = $('dsProductSelect').value || null;
@@ -1262,9 +1324,9 @@ function saveDirectSale() {
   if (qty <= 0) return warn('خطأ', 'أدخل عدداً صحيحاً');
 
   const prod = pid ? state.products.find(x => x.id === pid) : null;
-  const unitCost = prod ? (Number(prod.cost) || 0) : 0;
-  const total = price * qty;
-  const profit = total - (unitCost * qty);
+  const unitCost = prod ? toNum(prod.cost) : 0;
+  const total = calcLineTotal(price, qty);
+  const profit = roundMoney(total - calcLineTotal(unitCost, qty));
 
   state.directSales.push({
     id: 'QS-' + Date.now(),
@@ -1279,7 +1341,7 @@ function saveDirectSale() {
     note
   });
 
-  logAudit('بيع سريع بدون فاتورة', `${qty} × ${name} بقيمة ${fmt(total)} ل.س${note ? ' (' + note + ')' : ''}`);
+  logAudit('بيع سريع بدون فاتورة', `${qty} × ${name} بقيمة ${fmtCur(total)}${note ? ' (' + note + ')' : ''}`);
   saveToStorage();
   closeModal('directSaleModal');
   renderAll();
@@ -1351,9 +1413,9 @@ function openProductModal(prodId = null) {
     $('prodImageInput').value = p.image || '';
     $('prodNameInput').value = p.name || '';
     $('prodCatInput').value = p.category || '';
-    $('prodCostInput').value = p.cost || 0;
-    $('prodRetailInput').value = p.retailPrice || 0;
-    $('prodWholesaleInput').value = p.wholesalePrice || 0;
+    $('prodCostInput').value = toNum(p.cost);
+    $('prodRetailInput').value = toNum(p.retailPrice);
+    $('prodWholesaleInput').value = toNum(p.wholesalePrice);
   } else {
     $('productModalTitle').textContent = 'إضافة منتج جديد';
     $('prodSkuInput').value = generateUniqueSku();
@@ -1373,9 +1435,9 @@ function saveProduct() {
   const image = $('prodImageInput').value.trim();
   const name = $('prodNameInput').value.trim();
   const category = $('prodCatInput').value.trim() || 'مواد غذائية';
-  const cost = parseFloat($('prodCostInput').value) || 0;
-  const retailPrice = parseFloat($('prodRetailInput').value) || 0;
-  const wholesalePrice = parseFloat($('prodWholesaleInput').value) || 0;
+  const cost = toNum($('prodCostInput').value);
+  const retailPrice = toNum($('prodRetailInput').value);
+  const wholesalePrice = toNum($('prodWholesaleInput').value);
 
   if (!name) return warn('خطأ', 'أدخل اسم المنتج');
   if (retailPrice <= 0 && wholesalePrice <= 0) return warn('خطأ', 'أدخل سعراً واحداً على الأقل');
@@ -1425,7 +1487,7 @@ function openQuickProductModal() {
 
 function saveQuickProduct() {
   const name = $('qpName').value.trim();
-  const price = parseFloat($('qpPrice').value) || 0;
+  const price = toNum($('qpPrice').value);
   const qty = parseInt($('qpQty').value, 10) || 1;
 
   if (!name) return warn('خطأ', 'أدخل اسم المنتج');
@@ -1449,7 +1511,6 @@ function openSmartInputModal() { $('smartInputText').value = ''; openModal('smar
 
 function extractQtyAndProduct(line) {
   const normalizedLine = normalizeArabic(line);
-  // استخراج العدد بعد كلمة "العدد" أو "عدد" أو في نهاية السطر
   let qty = null;
   const afterWordMatch = normalizedLine.match(/(?:العدد|عدد|كميه|الكميه|x|\*)\s*[:\-]?\s*(\d+)/);
   if (afterWordMatch) {
@@ -1460,7 +1521,6 @@ function extractQtyAndProduct(line) {
   }
   if (!qty || qty <= 0) qty = 1;
 
-  // إزالة كلمات العدد والأرقام من النص للبحث عن اسم المنتج بدقة
   let cleanText = normalizedLine
     .replace(/(?:العدد|عدد|كميه|الكميه|علبه|علب|كرتون|حبه|قطعه)/g, ' ')
     .replace(/\d+/g, ' ')
@@ -1502,13 +1562,13 @@ function processSmartInput() {
   lines.forEach(line => {
     const { product, qty, score } = extractQtyAndProduct(line);
     if (product && score > 0) {
-      const unitPrice = Number(product[priceKey]) || Number(product.retailPrice) || Number(product.wholesalePrice) || 0;
+      const unitPrice = toNum(product[priceKey]) || toNum(product.retailPrice) || toNum(product.wholesalePrice);
       if (unitPrice <= 0) {
         skipped.push(`${product.name} (السعر غير محدد)`);
         return;
       }
       const existing = state.cart.find(i => i.productId === product.id && !i.isQuickOnly);
-      if (existing) existing.qty += qty;
+      if (existing) existing.qty = roundMoney(existing.qty + qty);
       else state.cart.push({ productId: product.id, qty });
       addedCount++;
     } else {
@@ -1539,9 +1599,9 @@ function processSmartPaste() {
     state.products.push({
       id: Date.now().toString() + Math.random().toString(36).slice(2,6),
       name: parts[0], category: parts[1] || 'مواد غذائية',
-      cost: parseFloat(parts[2]) || 0,
-      retailPrice: parseFloat(parts[3]) || 0,
-      wholesalePrice: parseFloat(parts[4]) || 0,
+      cost: toNum(parts[2]),
+      retailPrice: toNum(parts[3]),
+      wholesalePrice: toNum(parts[4]),
       sku, image: ''
     });
     added++;
@@ -1570,11 +1630,11 @@ function renderClientsGrid() {
           <span class="text-[10px] font-black px-2 py-0.5 rounded ${c.type === 'wholesale' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">${c.type === 'wholesale' ? 'موزع جملة' : 'عميل تجزئة'}</span>
           <span class="text-xs text-gray-400 font-bold"><i class="fa-solid fa-phone text-[10px]"></i> ${esc(c.phone || '-')}</span>
         </div>
-        <h4 class="font-black text-base text-gray-800 mt-2">${esc(c.name)}</h4>
+        <h4 onclick="openLedger('${esc(c.id)}', 'statement')" class="font-black text-base text-gray-800 hover:text-ashour cursor-pointer mt-2 transition">${esc(c.name)}</h4>
         <p class="text-xs text-gray-500 font-bold">${esc(c.address || '-')} • ${invCount} فاتورة</p>
       </div>
       <div class="border-t border-gray-100 pt-3 flex items-center justify-between gap-2">
-        <div><span class="text-[10px] text-gray-500 font-bold block">الدين المتبقي</span><span class="text-sm font-black ${debt > 0 ? 'text-red-600' : 'text-emerald-700'}">${fmt(debt)} ل.س</span></div>
+        <div><span class="text-[10px] text-gray-500 font-bold block">الدين المتبقي</span><span class="text-sm font-black ${debt > 0 ? 'text-red-600' : 'text-emerald-700'}">${fmtCur(debt)}</span></div>
         <div class="flex gap-1">
           <button onclick="openLedger('${esc(c.id)}', 'statement')" class="bg-ashour/10 text-ashour hover:bg-ashour hover:text-white px-2.5 py-1.5 rounded-xl text-xs font-bold transition">كشف</button>
           <button onclick="openLedger('${esc(c.id)}', 'returns')" class="bg-amber-100 text-amber-900 hover:bg-amber-500 hover:text-white px-2.5 py-1.5 rounded-xl text-xs font-bold transition" title="المرتجعات">مرتجعات</button>
@@ -1595,7 +1655,7 @@ function openClientModal(id = null) {
     $('clientNameInput').value = c.name || '';
     $('clientPhoneInput').value = c.phone === '-' ? '' : (c.phone || '');
     $('clientAddressInput').value = c.address === '-' ? '' : (c.address || '');
-    $('clientOpeningInput').value = c.openingDebt || 0;
+    $('clientOpeningInput').value = toNum(c.openingDebt);
     document.querySelector(`input[name="clientTypeRadio"][value="${c.type}"]`).checked = true;
   } else {
     $('clientModalTitle').textContent = 'إضافة زبون';
@@ -1614,7 +1674,7 @@ function saveClient() {
   const type = document.querySelector('input[name="clientTypeRadio"]:checked').value;
   const phone = $('clientPhoneInput').value.trim() || '-';
   const address = $('clientAddressInput').value.trim() || '-';
-  const openingDebt = parseFloat($('clientOpeningInput').value) || 0;
+  const openingDebt = toNum($('clientOpeningInput').value);
 
   if (!name) return warn('خطأ', 'أدخل اسم الزبون');
 
@@ -1674,28 +1734,43 @@ function openLedger(clientId, initialSubTab = 'statement') {
   const c = state.clients.find(x => x.id === clientId);
   if (!c) return;
 
+  const activeInvs = state.invoices.filter(i => i.clientId === clientId && i.status === 'active');
+  const totalPurchases = sumList(activeInvs, i => i.total);
+  const totalPaid = sumList(activeInvs, i => i.paid) + sumList(state.payments.filter(p => p.clientId === clientId), p => p.amount);
+  const totalReturns = sumList(state.returns.filter(r => r.clientId === clientId), r => r.amount);
+  const currentDebt = getClientDebt(clientId);
+
   $('ledgerClientName').textContent = 'كشف حساب: ' + c.name;
-  $('ledgerClientInfo').textContent = `${c.type === 'wholesale' ? 'موزع جملة' : 'عميل تجزئة'} | هاتف: ${c.phone || '-'}`;
-  $('ledgerDebtBalance').textContent = fmt(getClientDebt(clientId)) + ' ل.س';
+  $('ledgerClientBadge').textContent = c.type === 'wholesale' ? 'موزع جملة' : 'زبون عادي (تجزئة)';
+  $('ledgerClientBadge').className = `text-[11px] font-black px-2.5 py-0.5 rounded-full ${c.type === 'wholesale' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`;
+  $('ledgerClientPhone').innerHTML = `<i class="fa-solid fa-phone text-ashour ml-1"></i> رقم الهاتف: <span>${esc(c.phone || '-')}</span>`;
+  $('ledgerClientAddress').innerHTML = `<i class="fa-solid fa-location-dot text-ashour ml-1"></i> العنوان (منزل / محل): <span>${esc(c.address || '-')}</span>`;
+
+  $('ledgerSummaryCards').innerHTML = `
+    <div class="bg-white border border-gray-200 rounded-xl p-2.5"><span class="block text-[10px] text-gray-500">إجمالي المشتريات</span><span class="text-sm font-black text-gray-800">${fmtCur(totalPurchases)}</span></div>
+    <div class="bg-white border border-gray-200 rounded-xl p-2.5"><span class="block text-[10px] text-emerald-700">إجمالي المدفوع</span><span class="text-sm font-black text-emerald-700">${fmtCur(totalPaid)}</span></div>
+    <div class="bg-white border border-gray-200 rounded-xl p-2.5"><span class="block text-[10px] text-amber-700">المرتجعات</span><span class="text-sm font-black text-amber-700">${fmtCur(totalReturns)}</span></div>
+    <div class="bg-white border border-red-200 rounded-xl p-2.5"><span class="block text-[10px] text-red-600">الدين الحالي</span><span class="text-sm font-black text-red-600">${fmtCur(currentDebt)}</span></div>
+  `;
 
   const rows = [];
-  if (Number(c.openingDebt) > 0) {
-    rows.push({ id: 'op', type: 'opening', ts: 0, label: 'رصيد افتتاحي', debit: Number(c.openingDebt), credit: 0 });
+  if (toNum(c.openingDebt) > 0) {
+    rows.push({ id: 'op', type: 'opening', ts: 0, label: 'رصيد افتتاحي (دين سابق)', debit: toNum(c.openingDebt), credit: 0 });
   }
-  state.invoices.filter(i => i.clientId === clientId && i.status === 'active').forEach(i => {
-    const itemsSummary = i.items.map(it => `${it.qty} ${it.name}`).join('، ');
+  activeInvs.forEach(i => {
+    const itemsSummary = i.items.map(it => `${it.qty} × ${it.name} (${fmt(it.total)})`).join(' ، ');
     rows.push({
       id: i.id,
       type: 'invoice',
       ts: i.ts,
-      label: `فاتورة ${i.id} (${itemsSummary})`,
+      label: `فاتورة ${i.id} — [${itemsSummary}]`,
       debit: i.total,
       credit: i.paid,
       invoiceObj: i
     });
   });
   state.payments.filter(p => p.clientId === clientId).forEach(p => {
-    rows.push({ id: p.id, type: 'payment', ts: p.ts, label: `تسديد${p.note ? ' - ' + p.note : ''}`, debit: 0, credit: p.amount });
+    rows.push({ id: p.id, type: 'payment', ts: p.ts, label: `تسديد دفعة${p.note ? ' - ' + p.note : ''}`, debit: 0, credit: p.amount });
   });
   state.returns.filter(r => r.clientId === clientId).forEach(r => {
     rows.push({ id: r.id, type: 'return', ts: r.ts, label: `مرتجع: ${r.qty} × ${r.productName}`, debit: 0, credit: r.amount });
@@ -1705,12 +1780,12 @@ function openLedger(clientId, initialSubTab = 'statement') {
 
   $('ledgerTableBody').innerHTML = rows.map(r => `
     <tr class="border-b border-gray-100 hover:bg-gray-50">
-      <td class="p-2 text-gray-500 whitespace-nowrap">${r.ts ? new Date(r.ts).toLocaleDateString('ar-SY') : '—'}</td>
+      <td class="p-2 text-gray-500 whitespace-nowrap">${r.ts ? new Date(r.ts).toLocaleString('ar-SY') : '—'}</td>
       <td class="p-2 text-gray-800">${esc(r.label)}</td>
-      <td class="p-2 text-red-600">${r.debit ? fmt(r.debit) : '—'}</td>
-      <td class="p-2 text-emerald-700">${r.credit ? fmt(r.credit) : '—'}</td>
+      <td class="p-2 text-red-600 whitespace-nowrap">${r.debit ? fmt(r.debit) : '—'}</td>
+      <td class="p-2 text-emerald-700 whitespace-nowrap">${r.credit ? fmt(r.credit) : '—'}</td>
       <td class="p-2 text-center whitespace-nowrap">
-        ${r.type === 'invoice' ? `<button onclick="viewPastInvoice('${esc(r.id)}')" class="bg-ashour/10 text-ashour hover:bg-ashour hover:text-white px-2 py-1 rounded text-[10px] font-bold transition" title="عرض وصورة الفاتورة"><i class="fa-solid fa-receipt"></i> الفاتورة</button>` : ''}
+        ${r.type === 'invoice' ? `<button onclick="viewPastInvoice('${esc(r.id)}')" class="bg-ashour/10 text-ashour hover:bg-ashour hover:text-white px-2.5 py-1 rounded-lg text-[10px] font-bold transition" title="عرض وصورة الفاتورة"><i class="fa-solid fa-receipt"></i> الفاتورة</button>` : ''}
         ${r.type === 'payment' ? `<button onclick="deletePayment('${r.id}')" class="text-red-500 hover:text-red-700 font-bold text-xs" title="حذف الدفعة"><i class="fa-solid fa-trash"></i></button>` : ''}
         ${r.type !== 'invoice' && r.type !== 'payment' ? '—' : ''}
       </td>
@@ -1727,35 +1802,33 @@ function getClientReturnableSummary(clientId) {
     .filter(i => i.clientId === clientId && i.status === 'active')
     .forEach(inv => {
       inv.items.forEach(it => {
-        const key = (it.productId || it.name) + '||' + it.name + '||' + it.price;
+        const key = normalizeArabic(it.name) + '||' + toNum(it.price);
         if (!map.has(key)) {
           map.set(key, {
             key,
             productId: it.productId,
             name: it.name,
-            price: Number(it.price) || 0,
+            price: toNum(it.price),
             boughtQty: 0,
             returnedQty: 0
           });
         }
-        map.get(key).boughtQty += Number(it.qty) || 0;
+        map.get(key).boughtQty = roundMoney(map.get(key).boughtQty + toNum(it.qty));
       });
     });
 
   state.returns
     .filter(r => r.clientId === clientId)
     .forEach(ret => {
-      for (const entry of map.values()) {
-        if (entry.name === ret.productName && entry.price === Number(ret.unitPrice)) {
-          entry.returnedQty += Number(ret.qty) || 0;
-          break;
-        }
+      const key = normalizeArabic(ret.productName) + '||' + toNum(ret.unitPrice);
+      if (map.has(key)) {
+        map.get(key).returnedQty = roundMoney(map.get(key).returnedQty + toNum(ret.qty));
       }
     });
 
   return [...map.values()].map(x => ({
     ...x,
-    remainingQty: Math.max(0, x.boughtQty - x.returnedQty)
+    remainingQty: Math.max(0, roundMoney(x.boughtQty - x.returnedQty))
   }));
 }
 
@@ -1767,16 +1840,14 @@ function renderClientReturnsTab(clientId) {
     container.innerHTML = `<div class="text-center py-6 text-gray-400 text-xs font-bold bg-gray-50 rounded-xl border border-dashed">لا توجد أصناف مسجلة في فواتير هذا الزبون</div>`;
   } else {
     container.innerHTML = list.map(item => `
-      <div class="flex items-center justify-between gap-2 bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
+      <div class="flex items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-xl p-3">
         <div>
           <div class="font-black text-xs text-gray-800">${item.remainingQty} ${esc(item.name)}</div>
-          <div class="text-[10px] text-gray-500 font-bold">سعر القطعة: ${fmt(item.price)} ل.س (المشترى: ${item.boughtQty} | المرتجع: ${item.returnedQty})</div>
+          <div class="text-[10px] text-gray-500 font-bold">سعر القطعة: ${fmtCur(item.price)} • المشترى: ${item.boughtQty} • المرتجع: ${item.returnedQty}</div>
         </div>
         <div class="flex items-center gap-1.5">
-          <button onclick="processClientReturn('${esc(clientId)}', '${esc(item.name)}', ${item.price}, 1, ${item.remainingQty})" ${item.remainingQty <= 0 ? 'disabled' : ''} class="bg-red-100 hover:bg-red-600 text-red-700 hover:text-white disabled:opacity-40 px-2.5 py-1.5 rounded-lg text-[11px] font-black transition">
-            حذف 1 (${esc(item.name)})
-          </button>
-          ${item.remainingQty > 1 ? `<button onclick="askCustomReturnQty('${esc(clientId)}', '${esc(item.name)}', ${item.price}, ${item.remainingQty})" class="bg-amber-100 hover:bg-amber-600 text-amber-900 hover:text-white px-2.5 py-1.5 rounded-lg text-[11px] font-black transition">إرجاع عدد</button>` : ''}
+          <button onclick="adjustClientReturnQty('${esc(clientId)}', '${esc(item.name)}', ${item.price}, 1, ${item.remainingQty})" ${item.remainingQty <= 0 ? 'disabled' : ''} class="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white w-8 h-8 rounded-xl text-sm font-black transition flex items-center justify-center" title="زيادة مرتجع (+1 وخصم من الحساب)">+</button>
+          <button onclick="undoOneClientReturn('${esc(clientId)}', '${esc(item.name)}', ${item.price})" ${item.returnedQty <= 0 ? 'disabled' : ''} class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white w-8 h-8 rounded-xl text-sm font-black transition flex items-center justify-center" title="حذف/تراجع عن مرتجع (-1 وإعادة للحساب)">−</button>
         </div>
       </div>
     `).join('');
@@ -1784,52 +1855,55 @@ function renderClientReturnsTab(clientId) {
 
   const rets = state.returns.filter(r => r.clientId === clientId).sort((a,b) => (b.ts || 0) - (a.ts || 0));
   $('clientReturnsHistoryList').innerHTML = rets.length
-    ? rets.map(r => `<div class="flex justify-between items-center border-b border-gray-200 pb-1"><span>${esc(r.date)} — استرجاع <b>${r.qty}</b> × <b>${esc(r.productName)}</b></span><span class="text-emerald-700 font-black">خصم ${fmt(r.amount)} ل.س</span></div>`).join('')
+    ? rets.map(r => `<div class="flex justify-between items-center border-b border-gray-200 pb-1"><span>${esc(r.date)} — مرتجع <b>${r.qty}</b> × <b>${esc(r.productName)}</b></span><span class="text-emerald-700 font-black">خصم ${fmtCur(r.amount)}</span></div>`).join('')
     : `<div class="text-gray-400">لا توجد مرتجعات مسجلة بعد.</div>`;
 }
 
-function askCustomReturnQty(clientId, productName, price, maxQty) {
-  Swal.fire({
-    title: `إرجاع ${esc(productName)}`,
-    input: 'number',
-    inputLabel: `أدخل العدد المرتجع (الحد الأقصى: ${maxQty})`,
-    inputAttributes: { min: 1, max: maxQty, step: 1 },
-    inputValue: 1,
-    showCancelButton: true,
-    confirmButtonColor: '#d33',
-    confirmButtonText: 'تأكيد الخصم',
-    cancelButtonText: 'إلغاء'
-  }).then(res => {
-    if (!res.isConfirmed) return;
-    const q = parseInt(res.value, 10);
-    if (!q || q <= 0 || q > maxQty) return warn('خطأ', 'العدد غير صحيح');
-    processClientReturn(clientId, productName, price, q, maxQty);
-  });
-}
-
-function processClientReturn(clientId, productName, unitPrice, qty, maxQty) {
-  if (qty <= 0 || qty > maxQty) return warn('تنبيه', 'الكمية المرتجعة تتجاوز المتبقي');
+function adjustClientReturnQty(clientId, productName, unitPrice, deltaQty, maxRemaining) {
+  if (deltaQty <= 0 || deltaQty > maxRemaining) return warn('تنبيه', 'الكمية المرتجعة تتجاوز المتبقي');
   const client = state.clients.find(c => c.id === clientId);
   if (!client) return;
 
-  const deductAmount = (Number(unitPrice) || 0) * qty;
+  const deductAmount = calcLineTotal(unitPrice, deltaQty);
   state.returns.push({
-    id: 'RET-' + Date.now(),
+    id: 'RET-' + Date.now() + '_' + Math.random().toString(36).slice(2,5),
     ts: Date.now(),
     date: nowStr(),
     clientId,
     clientName: client.name,
     productName,
-    qty,
-    unitPrice: Number(unitPrice) || 0,
+    qty: deltaQty,
+    unitPrice: toNum(unitPrice),
     amount: deductAmount
   });
 
-  logAudit('مرتجع زبون', `استرجاع ${qty} × ${productName} من ${client.name} وخصم ${fmt(deductAmount)} ل.س`);
+  logAudit('مرتجع زبون', `زيادة مرتجع ${deltaQty} × ${productName} لـ ${client.name} (خصم ${fmtCur(deductAmount)})`);
   saveToStorage();
   renderAll();
   openLedger(clientId, 'returns');
-  toast(`تم خصم ${fmt(deductAmount)} ل.س من حساب ${client.name}`);
+  toast(`تم إرجاع ${deltaQty} × ${productName} وخصم ${fmtCur(deductAmount)}`);
+}
+
+function undoOneClientReturn(clientId, productName, unitPrice) {
+  const idx = [...state.returns].reverse().findIndex(
+    r => r.clientId === clientId && normalizeArabic(r.productName) === normalizeArabic(productName) && toNum(r.unitPrice) === toNum(unitPrice)
+  );
+  if (idx === -1) return warn('تنبيه', 'لا يوجد مرتجع مسجل لحذفه لهذا الصنف');
+  const realIdx = state.returns.length - 1 - idx;
+  const target = state.returns[realIdx];
+
+  if (toNum(target.qty) > 1) {
+    target.qty = roundMoney(toNum(target.qty) - 1);
+    target.amount = calcLineTotal(target.unitPrice, target.qty);
+  } else {
+    state.returns.splice(realIdx, 1);
+  }
+
+  logAudit('تعديل مرتجع', `حذف قطعة مرتجعة من ${productName}`);
+  saveToStorage();
+  renderAll();
+  openLedger(clientId, 'returns');
+  toast('تم حذف قطعة مرتجعة وتحديث الحساب');
 }
 
 function recordDebtPayment() {
@@ -1837,11 +1911,11 @@ function recordDebtPayment() {
   const c = state.clients.find(x => x.id === clientId);
   if (!c) return;
 
-  const amount = parseFloat($('payDebtAmount').value);
-  if (!amount || amount <= 0) return warn('تنبيه', 'أدخل مبلغاً صحيحاً');
+  const amount = toNum($('payDebtAmount').value);
+  if (amount <= 0) return warn('تنبيه', 'أدخل مبلغاً صحيحاً');
 
   state.payments.push({ id:'PAY-' + Date.now(), ts: Date.now(), date: nowStr(), clientId, amount, note: '' });
-  logAudit('تسديد دين', `${c.name}: ${fmt(amount)} ل.س`);
+  logAudit('تسديد دين', `${c.name}: ${fmtCur(amount)}`);
   saveToStorage();
   renderAll();
   openLedger(clientId, 'statement');
@@ -1863,58 +1937,237 @@ function deletePayment(payId) {
   });
 }
 
-/* ==================== Companies (الشركات الموردة) ==================== */
+/* ==================== Companies & Full Company Page ==================== */
 function renderCompaniesGrid() {
   const q = normalizeArabic(($('companySearch')?.value || '').trim());
   const list = state.companies.filter(comp => {
     if (!q) return true;
     const matchName = normalizeArabic(comp.name).includes(q);
     const matchCycle = normalizeArabic(comp.cycle).includes(q);
+    const matchDist = normalizeArabic(comp.distributorName).includes(q);
+    const matchAddr = normalizeArabic(comp.address).includes(q);
     const matchPhone = (comp.phone || '').includes(q);
     const matchProd = (comp.products || []).some(pr => normalizeArabic(pr.name).includes(q));
-    return matchName || matchCycle || matchPhone || matchProd;
+    return matchName || matchCycle || matchDist || matchAddr || matchPhone || matchProd;
   });
 
   $('companiesGrid').innerHTML = list.map(comp => {
     const prods = Array.isArray(comp.products) ? comp.products : [];
     return `
-    <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm space-y-3 card-hover">
+    <div onclick="openCompanyDetailPage('${esc(comp.id)}')" class="bg-white border border-gray-200 hover:border-ashour rounded-2xl p-4 shadow-sm space-y-3 cursor-pointer card-hover">
       <div class="flex items-start justify-between gap-2 border-b border-gray-100 pb-3">
         <div>
           <h4 class="font-black text-base text-ashour flex items-center gap-2"><i class="fa-solid fa-building text-ashour-gold"></i> ${esc(comp.name)}</h4>
-          <p class="text-xs text-gray-500 font-bold mt-1"><i class="fa-solid fa-phone text-[11px] text-emerald-600"></i> ${esc(comp.phone || '-')}</p>
-          <p class="text-xs text-indigo-700 font-black mt-1 bg-indigo-50 px-2.5 py-1 rounded-lg inline-block"><i class="fa-solid fa-rotate"></i> دورة التوزيع: ${esc(comp.cycle || 'غير محدد')}</p>
+          <p class="text-xs text-gray-500 font-bold mt-1"><i class="fa-solid fa-user-tie text-[11px] text-indigo-600"></i> الموزع: ${esc(comp.distributorName || '-')} • <i class="fa-solid fa-phone text-[11px] text-emerald-600"></i> ${esc(comp.phone || '-')}</p>
+          <p class="text-xs text-gray-600 font-bold mt-1"><i class="fa-solid fa-location-dot text-[11px] text-red-500"></i> ${esc(comp.address || '-')}</p>
+          <p class="text-xs text-indigo-700 font-black mt-1.5 bg-indigo-50 px-2.5 py-1 rounded-lg inline-block"><i class="fa-solid fa-rotate"></i> دورة التوزيع: ${esc(comp.cycle || 'غير محدد')}</p>
         </div>
-        <div class="flex gap-1">
+        <div onclick="event.stopPropagation()" class="flex gap-1">
           <button onclick="openCompanyModal('${esc(comp.id)}')" class="bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white px-2.5 py-1.5 rounded-xl text-xs font-bold transition"><i class="fa-solid fa-pen"></i></button>
           <button onclick="deleteCompany('${esc(comp.id)}')" class="bg-red-100 text-red-700 hover:bg-red-600 hover:text-white px-2.5 py-1.5 rounded-xl text-xs font-bold transition"><i class="fa-solid fa-trash"></i></button>
         </div>
       </div>
-      <div>
-        <div class="text-xs font-black text-gray-700 mb-2">منتجات الشركة وسعر المستهلك (${prods.length}):</div>
-        <div class="space-y-1.5 max-h-44 overflow-y-auto">
-          ${prods.length ? prods.map(pr => `
-            <div class="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 text-xs font-bold">
-              <span class="text-gray-800">${esc(pr.name)}</span>
-              <span class="text-emerald-700 font-black">سعر المستهلك: ${fmt(pr.consumerPrice)} ل.س</span>
-            </div>
-          `).join('') : `<div class="text-xs text-gray-400 text-center py-2">لا توجد منتجات مضافة لهذه الشركة</div>`}
-        </div>
+      <div class="flex justify-between items-center text-xs font-bold text-gray-600">
+        <span>عدد منتجات الشركة: <b class="text-ashour">${prods.length}</b></span>
+        <span class="text-ashour font-black">فتح الصفحة الكاملة <i class="fa-solid fa-arrow-left mr-1"></i></span>
       </div>
     </div>`;
   }).join('') || `<div class="col-span-full text-center py-10 text-gray-400 text-xs font-bold">لا توجد شركات مضافة</div>`;
 }
 
-function addCompanyProductRow(name = '', consumerPrice = '') {
+function openCompanyDetailPage(compId) {
+  state.activeCompanyId = compId;
+  const comp = state.companies.find(c => c.id === compId);
+  if (!comp) return;
+  if (!Array.isArray(comp.products)) comp.products = [];
+
+  $('companiesListSection').classList.add('hidden');
+  const page = $('companyDetailPage');
+  page.classList.remove('hidden');
+
+  page.innerHTML = `
+    <div class="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-sm space-y-4">
+      <div class="flex flex-wrap justify-between items-center gap-2 border-b border-gray-100 pb-3">
+        <button onclick="backToCompaniesList()" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition">
+          <i class="fa-solid fa-arrow-right"></i> العودة لقائمة الشركات
+        </button>
+        <div class="flex gap-2">
+          <button onclick="openCompanyModal('${esc(comp.id)}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1 transition">
+            <i class="fa-solid fa-pen"></i> تعديل بيانات الشركة
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-bold">
+        <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3">
+          <span class="text-gray-500 block text-[11px]">اسم الشركة</span>
+          <span class="text-base font-black text-ashour">${esc(comp.name)}</span>
+        </div>
+        <div class="bg-gray-50 border border-gray-200 rounded-xl p-3">
+          <span class="text-gray-500 block text-[11px]">أرقام الشركة</span>
+          <span class="text-sm font-black text-gray-800">${esc(comp.phone || '-')}</span>
+        </div>
+        <div class="bg-gray-50 border border-gray-200 rounded-xl p-3">
+          <span class="text-gray-500 block text-[11px]">عنوان الشركة المصنّعة</span>
+          <span class="text-sm font-black text-gray-800">${esc(comp.address || '-')}</span>
+        </div>
+        <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-3">
+          <span class="text-gray-500 block text-[11px]">الموزع ودورة التوزيع</span>
+          <span class="text-sm font-black text-amber-900">${esc(comp.distributorName || '-')} • ${esc(comp.cycle || '-')}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-sm space-y-4">
+      <div class="flex flex-wrap justify-between items-center gap-2">
+        <div>
+          <h3 class="text-lg font-black text-ashour"><i class="fa-solid fa-boxes-stacked text-ashour-gold"></i> منتجات الشركة وصورها من الاستوديو</h3>
+          <p class="text-xs text-gray-500 font-bold">يمكنك اختيار صورة من الاستوديو لكل منتج وتعديل سعر المستهلك فوراً</p>
+        </div>
+        <button onclick="addProductDirectlyToCompany('${esc(comp.id)}')" class="bg-ashour hover:bg-ashour-dark text-white px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1 transition">
+          <i class="fa-solid fa-plus"></i> إضافة منتج للشركة
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        ${comp.products.map((pr, idx) => `
+          <div class="border border-gray-200 rounded-2xl p-3 bg-gray-50/60 space-y-3 flex flex-col justify-between">
+            <div class="flex gap-3 items-center">
+              <img src="${esc(pr.image || 'https://placehold.co/120x120?text=منتج')}" class="w-16 h-16 rounded-xl object-cover bg-white border border-gray-200 flex-shrink-0" alt="">
+              <div class="flex-grow min-w-0">
+                <div class="font-black text-sm text-gray-800 truncate">${esc(pr.name)}</div>
+                <div class="text-xs font-black text-emerald-700 mt-1">سعر المستهلك: ${fmtCur(pr.consumerPrice)}</div>
+              </div>
+            </div>
+
+            <div class="space-y-2 text-xs font-bold border-t border-gray-200 pt-2.5">
+              <div class="flex gap-1.5 items-center">
+                <input type="number" step="any" id="cpPrice_${idx}" value="${toNum(pr.consumerPrice)}" class="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-black" placeholder="سعر المستهلك">
+                <button onclick="updateCompanyProductPrice('${esc(comp.id)}', ${idx})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-black whitespace-nowrap">حفظ السعر</button>
+              </div>
+              <div class="flex justify-between items-center gap-2">
+                <label class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 px-2.5 rounded-lg text-center cursor-pointer text-[11px] font-black transition">
+                  <i class="fa-solid fa-images"></i> اختيار صورة من الاستوديو
+                  <input type="file" accept="image/*" onchange="pickCompanyProductImage(event, '${esc(comp.id)}', ${idx})" class="hidden">
+                </label>
+                <button onclick="removeCompanyProduct('${esc(comp.id)}', ${idx})" class="bg-red-100 hover:bg-red-600 text-red-700 hover:text-white px-2.5 py-1.5 rounded-lg text-[11px] font-black transition"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </div>
+          </div>
+        `).join('') || `<div class="col-span-full text-center py-8 text-gray-400 text-xs font-bold">لا توجد منتجات مضافة لهذه الشركة بعد</div>`}
+      </div>
+    </div>
+  `;
+}
+
+function backToCompaniesList() {
+  state.activeCompanyId = null;
+  $('companyDetailPage').classList.add('hidden');
+  $('companiesListSection').classList.remove('hidden');
+  renderCompaniesGrid();
+}
+
+function pickCompanyProductImage(ev, compId, idx) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const comp = state.companies.find(c => c.id === compId);
+  if (!comp || !comp.products[idx]) return;
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    comp.products[idx].image = e.target.result;
+    saveToStorage();
+    openCompanyDetailPage(compId);
+    toast('تم تحديث صورة المنتج من الاستوديو');
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateCompanyProductPrice(compId, idx) {
+  const comp = state.companies.find(c => c.id === compId);
+  if (!comp || !comp.products[idx]) return;
+  const input = $('cpPrice_' + idx);
+  const newPrice = toNum(input ? input.value : 0);
+  comp.products[idx].consumerPrice = newPrice;
+  saveToStorage();
+  openCompanyDetailPage(compId);
+  toast('تم تحديث سعر المستهلك');
+}
+
+function removeCompanyProduct(compId, idx) {
+  const comp = state.companies.find(c => c.id === compId);
+  if (!comp || !comp.products[idx]) return;
+  comp.products.splice(idx, 1);
+  saveToStorage();
+  openCompanyDetailPage(compId);
+  toast('تم حذف المنتج من الشركة');
+}
+
+async function addProductDirectlyToCompany(compId) {
+  const comp = state.companies.find(c => c.id === compId);
+  if (!comp) return;
+  const { value: formValues } = await Swal.fire({
+    title: 'إضافة منتج للشركة',
+    html:
+      `<input id="swal-p-name" class="swal2-input" placeholder="اسم المنتج">` +
+      `<input id="swal-p-price" type="number" step="any" class="swal2-input" placeholder="سعر المستهلك (${CURRENCY})">`,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonColor: '#0F5C4E',
+    confirmButtonText: 'إضافة',
+    cancelButtonText: 'إلغاء',
+    preConfirm: () => {
+      const name = document.getElementById('swal-p-name').value.trim();
+      const price = toNum(document.getElementById('swal-p-price').value);
+      if (!name) {
+        Swal.showValidationMessage('يرجى إدخال اسم المنتج');
+        return false;
+      }
+      return { name, price };
+    }
+  });
+  if (!formValues) return;
+  comp.products.push({
+    id: 'cp_' + Date.now(),
+    name: formValues.name,
+    consumerPrice: formValues.price,
+    image: ''
+  });
+  saveToStorage();
+  openCompanyDetailPage(compId);
+  toast('تمت إضافة المنتج للشركة');
+}
+
+function addCompanyProductRow(name = '', consumerPrice = '', image = '') {
   const container = $('compProductsRows');
   const row = document.createElement('div');
-  row.className = 'flex gap-2 items-center comp-prod-row';
+  row.className = 'flex gap-2 items-center comp-prod-row bg-white p-2 rounded-xl border border-gray-200';
+  row.dataset.image = image || '';
   row.innerHTML = `
-    <input type="text" value="${esc(name)}" placeholder="اسم المنتج" class="flex-grow bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-bold comp-prod-name">
-    <input type="number" value="${esc(consumerPrice)}" placeholder="سعر المستهلك" class="w-32 bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-bold comp-prod-price">
+    <img src="${esc(image || 'https://placehold.co/60x60?text=صورة')}" class="w-9 h-9 rounded-lg object-cover border comp-prod-thumb flex-shrink-0" alt="">
+    <input type="text" value="${esc(name)}" placeholder="اسم المنتج" class="flex-grow bg-gray-50 border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold comp-prod-name">
+    <input type="number" step="any" value="${esc(consumerPrice)}" placeholder="سعر المستهلك" class="w-28 bg-gray-50 border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold comp-prod-price">
+    <label class="bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white px-2 py-1.5 rounded-lg text-xs font-bold cursor-pointer" title="صورة من الاستوديو">
+      <i class="fa-solid fa-image"></i>
+      <input type="file" accept="image/*" class="hidden" onchange="handleRowStudioImage(event, this)">
+    </label>
     <button type="button" onclick="this.parentElement.remove()" class="bg-red-100 text-red-600 hover:bg-red-600 hover:text-white px-2 py-1.5 rounded-lg text-xs font-bold"><i class="fa-solid fa-xmark"></i></button>
   `;
   container.appendChild(row);
+}
+
+function handleRowStudioImage(ev, inputEl) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const row = inputEl.closest('.comp-prod-row');
+  const reader = new FileReader();
+  reader.onload = e => {
+    row.dataset.image = e.target.result;
+    const thumb = row.querySelector('.comp-prod-thumb');
+    if (thumb) thumb.src = e.target.result;
+    toast('تم اختيار الصورة');
+  };
+  reader.readAsDataURL(file);
 }
 
 function openCompanyModal(id = null) {
@@ -1926,9 +2179,11 @@ function openCompanyModal(id = null) {
     $('companyModalTitle').textContent = 'تعديل بيانات الشركة';
     $('compNameInput').value = comp.name || '';
     $('compPhoneInput').value = comp.phone || '';
+    $('compAddressInput').value = comp.address || '';
+    $('compDistributorInput').value = comp.distributorName || '';
     $('compCycleInput').value = comp.cycle || '';
     if (Array.isArray(comp.products) && comp.products.length) {
-      comp.products.forEach(p => addCompanyProductRow(p.name, p.consumerPrice));
+      comp.products.forEach(p => addCompanyProductRow(p.name, p.consumerPrice, p.image || ''));
     } else {
       addCompanyProductRow();
     }
@@ -1936,6 +2191,8 @@ function openCompanyModal(id = null) {
     $('companyModalTitle').textContent = 'إضافة شركة موردة جديدة';
     $('compNameInput').value = '';
     $('compPhoneInput').value = '';
+    $('compAddressInput').value = '';
+    $('compDistributorInput').value = '';
     $('compCycleInput').value = '';
     addCompanyProductRow();
   }
@@ -1946,6 +2203,8 @@ function saveCompany() {
   const id = $('compEditId').value;
   const name = $('compNameInput').value.trim();
   const phone = $('compPhoneInput').value.trim() || '-';
+  const address = $('compAddressInput').value.trim() || '-';
+  const distributorName = $('compDistributorInput').value.trim() || '-';
   const cycle = $('compCycleInput').value.trim() || 'غير محدد';
 
   if (!name) return warn('خطأ', 'أدخل اسم الشركة');
@@ -1953,23 +2212,29 @@ function saveCompany() {
   const products = [];
   document.querySelectorAll('#compProductsRows .comp-prod-row').forEach(row => {
     const pName = row.querySelector('.comp-prod-name').value.trim();
-    const pPrice = parseFloat(row.querySelector('.comp-prod-price').value) || 0;
-    if (pName) products.push({ name: pName, consumerPrice: pPrice });
+    const pPrice = toNum(row.querySelector('.comp-prod-price').value);
+    const pImg = row.dataset.image || '';
+    if (pName) products.push({ id: 'cp_' + Date.now() + '_' + Math.random().toString(36).slice(2,5), name: pName, consumerPrice: pPrice, image: pImg });
   });
 
   if (id) {
     const comp = state.companies.find(x => x.id === id);
     if (!comp) return;
-    Object.assign(comp, { name, phone, cycle, products });
+    Object.assign(comp, { name, phone, address, distributorName, cycle, products });
     logAudit('تعديل شركة', name);
+    saveToStorage();
+    closeModal('companyModal');
+    if (state.activeCompanyId === id) openCompanyDetailPage(id);
+    else renderCompaniesGrid();
   } else {
-    state.companies.push({ id: 'comp_' + Date.now(), name, phone, cycle, products });
+    const newId = 'comp_' + Date.now();
+    state.companies.push({ id: newId, name, phone, address, distributorName, cycle, products });
     logAudit('إضافة شركة', name);
+    saveToStorage();
+    closeModal('companyModal');
+    renderCompaniesGrid();
   }
 
-  saveToStorage();
-  closeModal('companyModal');
-  renderCompaniesGrid();
   toast('تم حفظ بيانات الشركة');
 }
 
@@ -1983,7 +2248,7 @@ function deleteCompany(id) {
     state.companies = state.companies.filter(c => c.id !== id);
     logAudit('حذف شركة', id);
     saveToStorage();
-    renderCompaniesGrid();
+    backToCompaniesList();
   });
 }
 
@@ -1997,10 +2262,10 @@ function renderInvoicesTable() {
     ts: inv.ts || 0,
     date: inv.date,
     clientName: inv.clientName,
-    total: inv.total,
-    paid: inv.paid,
-    remaining: inv.remaining,
-    profit: inv.profit,
+    total: toNum(inv.total),
+    paid: toNum(inv.paid),
+    remaining: toNum(inv.remaining),
+    profit: toNum(inv.profit),
     status: inv.status
   }));
 
@@ -2010,10 +2275,10 @@ function renderInvoicesTable() {
     ts: ds.ts || 0,
     date: ds.date,
     clientName: `بيع سريع (${ds.qty} × ${ds.name})${ds.note ? ' - ' + ds.note : ''}`,
-    total: ds.total,
-    paid: ds.total,
+    total: toNum(ds.total),
+    paid: toNum(ds.total),
     remaining: 0,
-    profit: ds.profit,
+    profit: toNum(ds.profit),
     status: 'direct'
   }));
 
@@ -2031,10 +2296,10 @@ function renderInvoicesTable() {
         <td class="p-3 text-amber-700 font-black">${esc(row.id)}</td>
         <td class="p-3 text-gray-500 whitespace-nowrap">${esc(row.date)}</td>
         <td class="p-3 text-gray-800">${esc(row.clientName)}</td>
-        <td class="p-3 text-gray-800">${fmt(row.total)} ل.س</td>
-        <td class="p-3 text-emerald-700">${fmt(row.paid)} ل.س</td>
-        <td class="p-3 text-gray-400">0 ل.س</td>
-        <td class="p-3 text-indigo-700">${fmt(row.profit)} ل.س</td>
+        <td class="p-3 text-gray-800">${fmtCur(row.total)}</td>
+        <td class="p-3 text-emerald-700">${fmtCur(row.paid)}</td>
+        <td class="p-3 text-gray-400">${fmtCur(0)}</td>
+        <td class="p-3 text-indigo-700">${fmtCur(row.profit)}</td>
         <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800">بدون فاتورة</span></td>
         <td class="p-3 text-center whitespace-nowrap">
           <button onclick="deleteDirectSale('${esc(row.id)}')" class="text-red-600 hover:underline font-bold" title="حذف السجل"><i class="fa-solid fa-trash"></i></button>
@@ -2048,10 +2313,10 @@ function renderInvoicesTable() {
       <td class="p-3 text-ashour font-black">${esc(row.id)}</td>
       <td class="p-3 text-gray-500 whitespace-nowrap">${esc(row.date)}</td>
       <td class="p-3 text-gray-800">${esc(row.clientName)}</td>
-      <td class="p-3 text-gray-800 ${cancelled ? 'line-through' : ''}">${fmt(row.total)} ل.س</td>
-      <td class="p-3 text-emerald-700">${fmt(row.paid)} ل.س</td>
-      <td class="p-3 text-red-600">${fmt(row.remaining)} ل.س</td>
-      <td class="p-3 text-indigo-700">${cancelled ? '—' : fmt(row.profit)} ل.س</td>
+      <td class="p-3 text-gray-800 ${cancelled ? 'line-through' : ''}">${fmtCur(row.total)}</td>
+      <td class="p-3 text-emerald-700">${fmtCur(row.paid)}</td>
+      <td class="p-3 text-red-600">${fmtCur(row.remaining)}</td>
+      <td class="p-3 text-indigo-700">${cancelled ? '—' : fmtCur(row.profit)}</td>
       <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-black ${cancelled ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-800'}">${cancelled ? 'ملغاة' : 'نشطة'}</span></td>
       <td class="p-3 text-center whitespace-nowrap">
         <button onclick="viewPastInvoice('${esc(row.id)}')" class="text-ashour hover:underline font-bold ml-2" title="عرض وحفظ صورة الفاتورة"><i class="fa-solid fa-eye"></i></button>
@@ -2087,7 +2352,7 @@ function cancelInvoice(id) {
 
   Swal.fire({
     title:'إلغاء الفاتورة؟',
-    html:`تأكيد إلغاء الفاتورة <b>${esc(inv.id)}</b> — ${fmt(inv.total)} ل.س`,
+    html:`تأكيد إلغاء الفاتورة <b>${esc(inv.id)}</b> — ${fmtCur(inv.total)}`,
     icon:'warning', showCancelButton:true,
     confirmButtonColor:'#d33', cancelButtonColor:'#3085d6',
     confirmButtonText:'نعم، إلغاء', cancelButtonText:'تراجع'
@@ -2112,14 +2377,14 @@ function openExpenseModal() {
 
 function saveExpense() {
   const title = $('expTitle').value.trim();
-  const amount = parseFloat($('expAmount').value);
+  const amount = toNum($('expAmount').value);
   const notes = $('expNotes').value.trim() || '-';
 
   if (!title) return warn('خطأ', 'أدخل بند المصروف');
-  if (isNaN(amount) || amount <= 0) return warn('خطأ', 'أدخل مبلغاً صحيحاً');
+  if (amount <= 0) return warn('خطأ', 'أدخل مبلغاً صحيحاً');
 
   state.expenses.push({ id:'EXP-' + Date.now(), ts: Date.now(), date: nowStr(), title, amount, notes });
-  logAudit('تسجيل مصروف', `${title} بقيمة ${fmt(amount)}`);
+  logAudit('تسجيل مصروف', `${title} بقيمة ${fmtCur(amount)}`);
   saveToStorage();
   closeModal('expenseModal');
   renderAll();
@@ -2145,7 +2410,7 @@ function renderExpensesTable() {
     <tr class="hover:bg-gray-50 border-b border-gray-100">
       <td class="p-3 text-gray-500 whitespace-nowrap">${esc(e.date)}</td>
       <td class="p-3 font-bold text-gray-800">${esc(e.title)}</td>
-      <td class="p-3 text-purple-700 font-black">${fmt(e.amount)} ل.س</td>
+      <td class="p-3 text-purple-700 font-black">${fmtCur(e.amount)}</td>
       <td class="p-3 text-gray-600">${esc(e.notes)}</td>
       <td class="p-3 text-center"><button onclick="deleteExpense('${esc(e.id)}')" class="bg-red-100 text-red-600 hover:bg-red-600 hover:text-white px-2.5 py-1 rounded transition text-[10px] font-bold"><i class="fa-solid fa-trash"></i></button></td>
     </tr>`).join('') || `<tr><td colspan="5" class="p-6 text-center text-gray-400 text-xs">لا توجد مصاريف</td></tr>`;
@@ -2178,10 +2443,10 @@ function renderReports() {
   const dsList = state.directSales.filter(d => inRange(d.ts));
   const exps = state.expenses.filter(e => inRange(e.ts));
 
-  const sales = invs.reduce((a,i) => a + i.total, 0) + dsList.reduce((a,d) => a + d.total, 0);
-  const profit = invs.reduce((a,i) => a + i.profit, 0) + dsList.reduce((a,d) => a + d.profit, 0);
-  const expTotal = exps.reduce((a,e) => a + e.amount, 0);
-  const net = profit - expTotal;
+  const sales = roundMoney(sumList(invs, i => i.total) + sumList(dsList, d => d.total));
+  const profit = roundMoney(sumList(invs, i => i.profit) + sumList(dsList, d => d.profit));
+  const expTotal = sumList(exps, e => e.amount);
+  const net = roundMoney(profit - expTotal);
 
   const card = (label, value, color) => `
     <div class="bg-${color}-50 border border-${color}-200 rounded-xl p-3">
@@ -2191,22 +2456,22 @@ function renderReports() {
 
   $('reportCards').innerHTML =
     card('الفواتير + بيع سريع', `${invs.length} + ${dsList.length}`, 'emerald') +
-    card('المبيعات', fmt(sales) + ' ل.س', 'blue') +
-    card('إجمالي الربح', fmt(profit) + ' ل.س', 'indigo') +
-    card('المصاريف', fmt(expTotal) + ' ل.س', 'purple');
+    card('المبيعات', fmtCur(sales), 'blue') +
+    card('إجمالي الربح', fmtCur(profit), 'indigo') +
+    card('المصاريف', fmtCur(expTotal), 'purple');
 
   const map = {};
   invs.forEach(i => i.items.forEach(it => {
-    const key = it.productId || it.name;
+    const key = normalizeArabic(it.name);
     if (!map[key]) map[key] = { name: it.name, qty: 0, rev: 0 };
-    map[key].qty += it.qty;
-    map[key].rev += it.total;
+    map[key].qty = roundMoney(map[key].qty + toNum(it.qty));
+    map[key].rev = roundMoney(map[key].rev + toNum(it.total));
   }));
   dsList.forEach(d => {
-    const key = d.productId || d.name;
+    const key = normalizeArabic(d.name);
     if (!map[key]) map[key] = { name: d.name, qty: 0, rev: 0 };
-    map[key].qty += d.qty;
-    map[key].rev += d.total;
+    map[key].qty = roundMoney(map[key].qty + toNum(d.qty));
+    map[key].rev = roundMoney(map[key].rev + toNum(d.total));
   });
   const top = Object.values(map).sort((a,b) => b.qty - a.qty).slice(0, 10);
 
@@ -2214,7 +2479,7 @@ function renderReports() {
     <tr class="border-b border-gray-100">
       <td class="p-2 text-gray-800">${esc(t.name)}</td>
       <td class="p-2 text-ashour font-black">${t.qty}</td>
-      <td class="p-2 text-gray-700">${fmt(t.rev)}</td>
+      <td class="p-2 text-gray-700">${fmtCur(t.rev)}</td>
     </tr>`).join('') || `<tr><td colspan="3" class="p-4 text-center text-gray-400">لا بيانات</td></tr>`;
 
   lastReport = { from, to, sales, profit, expTotal, net, count: invs.length + dsList.length, top };
@@ -2224,6 +2489,7 @@ function exportReportCSV() {
   if (!lastReport) renderReports();
   const r = lastReport;
   const lines = [
+    ['العملة', CURRENCY],
     ['تقرير', `${r.from} إلى ${r.to}`],
     ['عدد العمليات', r.count],
     ['المبيعات', r.sales],
@@ -2257,12 +2523,12 @@ function loadStoreInfoToSettings() {
   $('setStoreName').value = state.storeInfo.name || '';
   $('setStorePhone').value = state.storeInfo.phone || '';
   $('setStoreAddress').value = state.storeInfo.address || '';
-  $('headerStoreName').textContent = state.storeInfo.name || 'مركز عاشور';
+  $('headerStoreName').textContent = state.storeInfo.name || 'مركز عاشور للتجارة';
 }
 
 function saveStoreSettings() {
   state.storeInfo = {
-    name: $('setStoreName').value.trim() || 'مركز عاشور',
+    name: $('setStoreName').value.trim() || 'مركز عاشور للتجارة',
     phone: $('setStorePhone').value.trim(),
     address: $('setStoreAddress').value.trim()
   };
@@ -2352,9 +2618,9 @@ function showReceiptModal(inv) {
   state.currentReceiptInv = inv;
   const client = state.clients.find(c => c.id === inv.clientId) || { id: null };
   const totalDebt = client.id ? getClientDebt(client.id) : 0;
-  const hasDebt = totalDebt > 0 || (Number(inv.remaining) || 0) > 0;
+  const hasDebt = totalDebt > 0 || toNum(inv.remaining) > 0;
 
-  $('recStoreName').textContent = state.storeInfo.name;
+  $('recStoreName').textContent = state.storeInfo.name || 'مركز عاشور للتجارة';
   $('recStorePhone').textContent = `هاتف: ${state.storeInfo.phone || '-'}`;
   $('recStoreAddress').textContent = `العنوان: ${state.storeInfo.address || '-'}`;
   $('recNum').textContent = '#' + inv.id;
@@ -2371,24 +2637,23 @@ function showReceiptModal(inv) {
       <td class="py-1 text-left font-bold">${fmt(i.total)}</td>
     </tr>`).join('');
 
-  if (inv.discount > 0) {
+  if (toNum(inv.discount) > 0) {
     $('recDiscountRow').classList.remove('hidden');
-    $('recDiscount').textContent = fmt(inv.discount) + ' ل.س';
+    $('recDiscount').textContent = fmtCur(inv.discount);
   } else {
     $('recDiscountRow').classList.add('hidden');
   }
 
-  $('recTotal').textContent = fmt(inv.total) + ' ل.س';
+  $('recTotal').textContent = fmtCur(inv.total);
 
-  // إظهار المدفوع والدين فقط إذا كان يوجد عليه دين
   $('recPaidRow').classList.toggle('hidden', !hasDebt);
   $('recRemainingRow').classList.toggle('hidden', !hasDebt);
   $('recTotalDebtRow').classList.toggle('hidden', !hasDebt);
 
   if (hasDebt) {
-    $('recPaid').textContent = fmt(inv.paid) + ' ل.س';
-    $('recRemaining').textContent = fmt(inv.remaining) + ' ل.س';
-    $('recTotalClientDebt').textContent = fmt(totalDebt) + ' ل.س';
+    $('recPaid').textContent = fmtCur(inv.paid);
+    $('recRemaining').textContent = fmtCur(inv.remaining);
+    $('recTotalClientDebt').textContent = fmtCur(totalDebt);
   }
 
   openModal('receiptModal');
@@ -2396,10 +2661,14 @@ function showReceiptModal(inv) {
 
 async function generateReceiptCanvas() {
   const el = $('printableReceipt');
+  if (document.fonts && document.fonts.ready) {
+    await document.fonts.ready;
+  }
   return await html2canvas(el, {
     scale: 2,
     backgroundColor: '#ffffff',
-    useCORS: true
+    useCORS: true,
+    allowTaint: true
   });
 }
 
@@ -2472,7 +2741,11 @@ function renderAll() {
   renderInvoicesTable();
   renderProductsTable();
   renderClientsGrid();
-  renderCompaniesGrid();
+  if (state.activeCompanyId) {
+    openCompanyDetailPage(state.activeCompanyId);
+  } else {
+    renderCompaniesGrid();
+  }
   renderExpensesTable();
   renderAuditLog();
   if (!$('view-reports').classList.contains('hidden')) renderReports();
