@@ -15,6 +15,7 @@
 
   let _db = null;
 
+  // فتح قاعدة البيانات
   function openDB() {
     return new Promise((resolve, reject) => {
       if (_db) return resolve(_db);
@@ -60,6 +61,7 @@
   }
 
   const Storage = {
+    // حفظ الحالة (IndexedDB + localStorage)
     async save(state) {
       const errors = [];
       let okIndexedDB = false;
@@ -80,11 +82,12 @@
       return { ok: okIndexedDB || okLocalStorage, okIndexedDB, okLocalStorage, errors };
     },
 
+    // حفظ نسخة احتياطية دورية (تُستدعى كل 5 دقائق من app.js)
     async saveBackup(state) {
       try {
         const serialized = JSON.parse(JSON.stringify(state));
         await put(STORE_BACKUP, 'backup_' + Date.now(), { ts: Date.now(), date: new Date().toISOString(), state: serialized });
-        await this._trimBackups(10);
+        await this._trimBackups(10); // الاحتفاظ بآخر 10 نسخ فقط
         return true;
       } catch (e) { return false; }
     },
@@ -103,6 +106,7 @@
       } catch (_) {}
     },
 
+    // تحميل البيانات (البحث في IndexedDB أولاً، ثم localStorage، ثم النسخ الاحتياطية)
     async load() {
       try {
         const data = await get(STORE_MAIN, 'state');
@@ -127,9 +131,11 @@
           return { ok: true, source: 'backup', state: backups[0].state };
         }
       } catch (_) {}
+
       return { ok: false, state: null };
     },
 
+    // جلب حالة التخزين (لعرضها في الإعدادات)
     async getStatus() {
       const status = { indexedDB: 'غير متاح', localStorage: 'غير متاح', localStorageSize: 0, estimate: null };
       try { await openDB(); status.indexedDB = 'متاح ✓'; } catch (_) { status.indexedDB = 'غير مدعوم'; }
@@ -147,6 +153,7 @@
       return status;
     },
 
+    // اختبار سعة الذاكرة بكتابة 5000 فاتورة وهمية
     async testCapacity() {
       const start = performance.now();
       const fake = { invoices: [], products: [], clients: [] };
@@ -160,9 +167,11 @@
       return { ok: okIDB || okLS, okIDB, okLS, sizeKB, ms: Math.round(performance.now() - start), error: err };
     },
 
+    // تسجيل حركة في قاعدة البيانات المنفصلة
     async addAudit(entry) {
       try { await put(STORE_AUDIT, entry.ts || Date.now(), entry); } catch (_) {}
     }
   };
+  
   global.AshourDB = Storage;
 })(window);
