@@ -369,7 +369,7 @@ tailwind.config = {
 
 <!-- ================= MODALS ================= -->
 
-<!-- Quick Product Modal (الفاتورة فقط - بدون كود وبدون إضافة للمنتجات) -->
+<!-- Quick Product Modal -->
 <div id="quickProductModal" onclick="if(event.target===this)closeModal('quickProductModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4" style="display:none">
   <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4">
     <h3 class="text-lg font-black text-indigo-700"><i class="fa-solid fa-bolt"></i> منتج سريع (للفاتورة فقط)</h3>
@@ -388,7 +388,7 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- Direct Quick Sale Modal (بيع سريع بدون فاتورة) -->
+<!-- Direct Quick Sale Modal -->
 <div id="directSaleModal" onclick="if(event.target===this)closeModal('directSaleModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4" style="display:none">
   <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4">
     <h3 class="text-lg font-black text-amber-700"><i class="fa-solid fa-bag-shopping"></i> بيع سريع (بدون فاتورة)</h3>
@@ -529,48 +529,6 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- Receipt Modal -->
-<div id="receiptModal" onclick="if(event.target===this)closeModal('receiptModal')" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4 overflow-y-auto" style="display:none">
-  <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl relative my-8">
-    <button onclick="closeModal('receiptModal')" class="absolute left-4 top-4 text-gray-400 hover:text-gray-700 text-xl font-bold">&times;</button>
-    <div id="printableReceipt" class="p-4 text-xs text-black border border-dashed border-gray-300 bg-white rounded-lg">
-      <div class="text-center space-y-1 mb-3">
-        <h2 id="recStoreName" class="text-lg font-black text-black leading-snug"></h2>
-        <p id="recStorePhone" class="text-[11px] font-bold text-gray-800"></p>
-        <p id="recStoreAddress" class="text-[11px] font-bold text-gray-800"></p>
-        <div class="border-b border-black border-dashed my-2"></div>
-      </div>
-      <div class="space-y-1 text-[11px] mb-3 font-bold">
-        <div class="flex justify-between"><span>رقم الفاتورة:</span><span id="recNum" class="font-black"></span></div>
-        <div class="flex justify-between"><span>التاريخ:</span><span id="recDate"></span></div>
-        <div class="flex justify-between"><span>الزبون:</span><span id="recClient" class="font-black"></span></div>
-        <div class="flex justify-between"><span>طريقة الدفع:</span><span id="recPayType" class="font-black"></span></div>
-      </div>
-      <div class="border-b border-black border-dashed my-2"></div>
-      <table class="w-full text-right text-[11px] mb-3 font-bold">
-        <thead><tr class="border-b border-black"><th class="py-1">الصنف</th><th class="py-1 text-center">كمية</th><th class="py-1 text-left">سعر</th><th class="py-1 text-left">إجمالي</th></tr></thead>
-        <tbody id="recItemsBody"></tbody>
-      </table>
-      <div class="border-b border-black border-dashed my-2"></div>
-      <div class="space-y-1 text-[11px] font-bold">
-        <div id="recDiscountRow" class="flex justify-between hidden"><span>الخصم:</span><span id="recDiscount"></span></div>
-        <div class="flex justify-between font-black text-sm"><span>المجموع الكلي:</span><span id="recTotal"></span></div>
-        <div id="recPaidRow" class="flex justify-between"><span>المدفوع:</span><span id="recPaid"></span></div>
-        <div id="recRemainingRow" class="flex justify-between"><span>المتبقي (دين):</span><span id="recRemaining"></span></div>
-        <div id="recTotalDebtRow" class="flex justify-between font-black border-t border-black pt-1 mt-1"><span>إجمالي دين الزبون:</span><span id="recTotalClientDebt"></span></div>
-      </div>
-      <div class="border-b border-black border-dashed my-3"></div>
-      <div class="text-center text-[11px] space-y-1"><p class="font-black">شكراً لتعاملكم معنا!</p></div>
-    </div>
-    <div class="mt-4 grid grid-cols-2 gap-2">
-      <button onclick="saveReceiptAsImage()" class="bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-emerald-700 transition flex items-center justify-center gap-1"><i class="fa-solid fa-image"></i> حفظ في الاستوديو</button>
-      <button onclick="shareReceiptImage()" class="bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-indigo-700 transition flex items-center justify-center gap-1"><i class="fa-solid fa-share-nodes"></i> مشاركة</button>
-      <button onclick="window.print()" class="bg-ashour text-white py-2.5 rounded-xl font-bold text-xs hover:bg-ashour-dark transition flex items-center justify-center gap-1"><i class="fa-solid fa-print"></i> طباعة</button>
-      <button onclick="closeModal('receiptModal')" class="bg-gray-200 text-gray-700 py-2.5 rounded-xl font-bold text-xs hover:bg-gray-300 transition">إغلاق</button>
-    </div>
-  </div>
-</div>
-
 <!-- Client Modal -->
 <div id="clientModal" onclick="if(event.target===this)closeModal('clientModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4" style="display:none">
   <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4">
@@ -639,12 +597,54 @@ tailwind.config = {
 
     <!-- Sub-tab 2: Client Returns with +/- buttons -->
     <div id="ledgerReturnsPanel" class="hidden bg-white rounded-2xl border border-gray-200 p-3 space-y-3">
-      <p class="text-xs text-gray-600 font-bold">تحكم بالمرتجعات لكل منتج: اضغط <b class="text-red-600">(+)</b> لإرجاع قطعة وخصم سعرها من حساب الزبون، أو <b class="text-emerald-700">(-)</b> لحذف/إلغاء قطعة مرتجعة وإعادة سعرها لحسابه:</p>
+      <p class="text-xs text-gray-600 font-bold">تحكم بالمرتجعات لكل منتج: اضغط <b class="text-red-600">(+)</b> لزيادة المرتجع وخصم قيمة المنتج من حساب الزبون، أو <b class="text-emerald-700">(-)</b> لحذف/إنقاص المرتجع وإعادة قيمته لحسابه:</p>
       <div id="clientReturnableItemsList" class="space-y-2 max-h-72 overflow-y-auto"></div>
       <div id="clientReturnsHistoryBox" class="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-1.5 text-xs">
         <div class="font-black text-gray-700">سجل المرتجعات السابقة لهذا الزبون:</div>
         <div id="clientReturnsHistoryList" class="space-y-1 font-bold text-gray-600"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Receipt Modal (Top-most layer so it always appears in front) -->
+<div id="receiptModal" onclick="if(event.target===this)closeModal('receiptModal')" class="fixed inset-0 bg-black/75 z-[90] hidden items-center justify-center p-4 overflow-y-auto" style="display:none">
+  <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl relative my-8 border-2 border-ashour/20">
+    <button onclick="closeModal('receiptModal')" class="absolute left-4 top-4 text-gray-400 hover:text-gray-700 text-xl font-bold">&times;</button>
+    <div id="printableReceipt" class="p-4 text-xs text-black border border-dashed border-gray-300 bg-white rounded-lg">
+      <div class="text-center space-y-1 mb-3">
+        <h2 id="recStoreName" class="text-lg font-black text-black leading-snug"></h2>
+        <p id="recStorePhone" class="text-[11px] font-bold text-gray-800"></p>
+        <p id="recStoreAddress" class="text-[11px] font-bold text-gray-800"></p>
+        <div class="border-b border-black border-dashed my-2"></div>
+      </div>
+      <div class="space-y-1 text-[11px] mb-3 font-bold">
+        <div class="flex justify-between"><span>رقم الفاتورة:</span><span id="recNum" class="font-black"></span></div>
+        <div class="flex justify-between"><span>التاريخ:</span><span id="recDate"></span></div>
+        <div class="flex justify-between"><span>الزبون:</span><span id="recClient" class="font-black"></span></div>
+        <div class="flex justify-between"><span>طريقة الدفع:</span><span id="recPayType" class="font-black"></span></div>
+      </div>
+      <div class="border-b border-black border-dashed my-2"></div>
+      <table class="w-full text-right text-[11px] mb-3 font-bold">
+        <thead><tr class="border-b border-black"><th class="py-1">الصنف</th><th class="py-1 text-center">كمية</th><th class="py-1 text-left">سعر</th><th class="py-1 text-left">إجمالي</th></tr></thead>
+        <tbody id="recItemsBody"></tbody>
+      </table>
+      <div class="border-b border-black border-dashed my-2"></div>
+      <div class="space-y-1 text-[11px] font-bold">
+        <div id="recDiscountRow" class="flex justify-between hidden"><span>الخصم:</span><span id="recDiscount"></span></div>
+        <div class="flex justify-between font-black text-sm"><span>المجموع الكلي:</span><span id="recTotal"></span></div>
+        <div id="recPaidRow" class="flex justify-between"><span>المدفوع:</span><span id="recPaid"></span></div>
+        <div id="recRemainingRow" class="flex justify-between"><span>المتبقي (دين):</span><span id="recRemaining"></span></div>
+        <div id="recTotalDebtRow" class="flex justify-between font-black border-t border-black pt-1 mt-1"><span>إجمالي دين الزبون:</span><span id="recTotalClientDebt"></span></div>
+      </div>
+      <div class="border-b border-black border-dashed my-3"></div>
+      <div class="text-center text-[11px] space-y-1"><p class="font-black">شكراً لتعاملكم معنا!</p></div>
+    </div>
+    <div class="mt-4 grid grid-cols-2 gap-2">
+      <button onclick="saveReceiptAsImage()" class="bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-emerald-700 transition flex items-center justify-center gap-1"><i class="fa-solid fa-image"></i> حفظ في الاستوديو</button>
+      <button onclick="shareReceiptImage()" class="bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-indigo-700 transition flex items-center justify-center gap-1"><i class="fa-solid fa-share-nodes"></i> مشاركة</button>
+      <button onclick="window.print()" class="bg-ashour text-white py-2.5 rounded-xl font-bold text-xs hover:bg-ashour-dark transition flex items-center justify-center gap-1"><i class="fa-solid fa-print"></i> طباعة</button>
+      <button onclick="closeModal('receiptModal')" class="bg-gray-200 text-gray-700 py-2.5 rounded-xl font-bold text-xs hover:bg-gray-300 transition">إغلاق</button>
     </div>
   </div>
 </div>
@@ -696,7 +696,7 @@ const warn = (title, text, icon='warning') => Swal.fire({ icon, title, text, con
 const toast = (title, icon='success') => Swal.fire({ toast:true, position:'top-end', icon, title, showConfirmButton:false, timer:1600 });
 
 /* ==================== Constants ==================== */
-const STORAGE_KEY = 'ashour_pos_db_v9';
+const STORAGE_KEY = 'ashour_pos_db_v10';
 const DEFAULT_CATEGORIES = ['بسكويت','شيبس','عصائر ومشروبات','سكاكر وعلكة','قهوة','مواد غذائية'];
 const IMPORTED_PRODUCTS = [
   {"name":"اربيكا طبيعي صغير","category":"شيبس","image":"https://i.ibb.co/prfRDSvB/1791902542596.jpg"},
@@ -779,7 +779,7 @@ function saveToStorage() {
 
 async function loadFromStorage() {
   let raw = null;
-  try { raw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
+  try { raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('ashour_pos_db_v9'); } catch(e) {}
   if (raw) {
     try { state = Object.assign(defaultState(), JSON.parse(raw)); }
     catch (e) { state = defaultState(); }
@@ -1291,7 +1291,7 @@ function checkoutPOS() {
   toast('تم حفظ الفاتورة');
 }
 
-/* ==================== Direct Quick Sale (بدون فاتورة) ==================== */
+/* ==================== Direct Quick Sale ==================== */
 function openDirectSaleModal() {
   const sel = $('dsProductSelect');
   sel.innerHTML = `<option value="">-- إدخال يدوي أو اختيار منتج --</option>` +
@@ -1785,7 +1785,7 @@ function openLedger(clientId, initialSubTab = 'statement') {
       <td class="p-2 text-red-600 whitespace-nowrap">${r.debit ? fmt(r.debit) : '—'}</td>
       <td class="p-2 text-emerald-700 whitespace-nowrap">${r.credit ? fmt(r.credit) : '—'}</td>
       <td class="p-2 text-center whitespace-nowrap">
-        ${r.type === 'invoice' ? `<button onclick="viewPastInvoice('${esc(r.id)}')" class="bg-ashour/10 text-ashour hover:bg-ashour hover:text-white px-2.5 py-1 rounded-lg text-[10px] font-bold transition" title="عرض وصورة الفاتورة"><i class="fa-solid fa-receipt"></i> الفاتورة</button>` : ''}
+        ${r.type === 'invoice' ? `<button onclick="viewPastInvoice('${esc(r.id)}')" class="bg-ashour text-white hover:bg-ashour-dark px-2.5 py-1 rounded-lg text-[10px] font-bold transition shadow-sm" title="عرض وصورة الفاتورة"><i class="fa-solid fa-receipt"></i> فتح الفاتورة</button>` : ''}
         ${r.type === 'payment' ? `<button onclick="deletePayment('${r.id}')" class="text-red-500 hover:text-red-700 font-bold text-xs" title="حذف الدفعة"><i class="fa-solid fa-trash"></i></button>` : ''}
         ${r.type !== 'invoice' && r.type !== 'payment' ? '—' : ''}
       </td>
@@ -1842,12 +1842,12 @@ function renderClientReturnsTab(clientId) {
     container.innerHTML = list.map(item => `
       <div class="flex items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-xl p-3">
         <div>
-          <div class="font-black text-xs text-gray-800">${item.remainingQty} ${esc(item.name)}</div>
-          <div class="text-[10px] text-gray-500 font-bold">سعر القطعة: ${fmtCur(item.price)} • المشترى: ${item.boughtQty} • المرتجع: ${item.returnedQty}</div>
+          <div class="font-black text-xs text-gray-800">${esc(item.name)} <span class="text-red-600">(مرتجع: ${item.returnedQty})</span></div>
+          <div class="text-[10px] text-gray-500 font-bold">سعر القطعة: ${fmtCur(item.price)} • المشترى: ${item.boughtQty} • المتبقي: ${item.remainingQty}</div>
         </div>
         <div class="flex items-center gap-1.5">
-          <button onclick="adjustClientReturnQty('${esc(clientId)}', '${esc(item.name)}', ${item.price}, 1, ${item.remainingQty})" ${item.remainingQty <= 0 ? 'disabled' : ''} class="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white w-8 h-8 rounded-xl text-sm font-black transition flex items-center justify-center" title="زيادة مرتجع (+1 وخصم من الحساب)">+</button>
-          <button onclick="undoOneClientReturn('${esc(clientId)}', '${esc(item.name)}', ${item.price})" ${item.returnedQty <= 0 ? 'disabled' : ''} class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white w-8 h-8 rounded-xl text-sm font-black transition flex items-center justify-center" title="حذف/تراجع عن مرتجع (-1 وإعادة للحساب)">−</button>
+          <button onclick="increaseClientReturn('${esc(clientId)}', '${esc(item.name)}', ${item.price}, ${item.remainingQty})" ${item.remainingQty <= 0 ? 'disabled' : ''} class="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white w-8 h-8 rounded-xl text-sm font-black transition flex items-center justify-center" title="زيادة مرتجع (+1 وخصم من الحساب)">+</button>
+          <button onclick="decreaseClientReturn('${esc(clientId)}', '${esc(item.name)}', ${item.price})" ${item.returnedQty <= 0 ? 'disabled' : ''} class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white w-8 h-8 rounded-xl text-sm font-black transition flex items-center justify-center" title="إنقاص/حذف مرتجع (-1 وإعادة للحساب)">−</button>
         </div>
       </div>
     `).join('');
@@ -1859,12 +1859,13 @@ function renderClientReturnsTab(clientId) {
     : `<div class="text-gray-400">لا توجد مرتجعات مسجلة بعد.</div>`;
 }
 
-function adjustClientReturnQty(clientId, productName, unitPrice, deltaQty, maxRemaining) {
-  if (deltaQty <= 0 || deltaQty > maxRemaining) return warn('تنبيه', 'الكمية المرتجعة تتجاوز المتبقي');
+/* زر (+) يزيد المرتجع (+1) ويخصم من حساب الزبون */
+function increaseClientReturn(clientId, productName, unitPrice, maxRemaining) {
+  if (maxRemaining <= 0) return warn('تنبيه', 'الكمية المرتجعة وصلت للحد الأقصى للمشتريات');
   const client = state.clients.find(c => c.id === clientId);
   if (!client) return;
 
-  const deductAmount = calcLineTotal(unitPrice, deltaQty);
+  const deductAmount = calcLineTotal(unitPrice, 1);
   state.returns.push({
     id: 'RET-' + Date.now() + '_' + Math.random().toString(36).slice(2,5),
     ts: Date.now(),
@@ -1872,23 +1873,24 @@ function adjustClientReturnQty(clientId, productName, unitPrice, deltaQty, maxRe
     clientId,
     clientName: client.name,
     productName,
-    qty: deltaQty,
+    qty: 1,
     unitPrice: toNum(unitPrice),
     amount: deductAmount
   });
 
-  logAudit('مرتجع زبون', `زيادة مرتجع ${deltaQty} × ${productName} لـ ${client.name} (خصم ${fmtCur(deductAmount)})`);
+  logAudit('مرتجع زبون', `زيادة مرتجع (+1) ${productName} لـ ${client.name} (خصم ${fmtCur(deductAmount)})`);
   saveToStorage();
   renderAll();
   openLedger(clientId, 'returns');
-  toast(`تم إرجاع ${deltaQty} × ${productName} وخصم ${fmtCur(deductAmount)}`);
+  toast(`تمت زيادة مرتجع 1 × ${productName} وخصم ${fmtCur(deductAmount)}`);
 }
 
-function undoOneClientReturn(clientId, productName, unitPrice) {
+/* زر (-) ينقص المرتجع (-1) ويعيد قيمته لحساب الزبون */
+function decreaseClientReturn(clientId, productName, unitPrice) {
   const idx = [...state.returns].reverse().findIndex(
     r => r.clientId === clientId && normalizeArabic(r.productName) === normalizeArabic(productName) && toNum(r.unitPrice) === toNum(unitPrice)
   );
-  if (idx === -1) return warn('تنبيه', 'لا يوجد مرتجع مسجل لحذفه لهذا الصنف');
+  if (idx === -1) return warn('تنبيه', 'لا يوجد مرتجع مسجل لتقليصه لهذا الصنف');
   const realIdx = state.returns.length - 1 - idx;
   const target = state.returns[realIdx];
 
@@ -1899,11 +1901,11 @@ function undoOneClientReturn(clientId, productName, unitPrice) {
     state.returns.splice(realIdx, 1);
   }
 
-  logAudit('تعديل مرتجع', `حذف قطعة مرتجعة من ${productName}`);
+  logAudit('تعديل مرتجع', `إنقاص مرتجع (-1) ${productName}`);
   saveToStorage();
   renderAll();
   openLedger(clientId, 'returns');
-  toast('تم حذف قطعة مرتجعة وتحديث الحساب');
+  toast('تم إنقاص المرتجع (-1) وتحديث الحساب');
 }
 
 function recordDebtPayment() {
@@ -2446,7 +2448,6 @@ function renderReports() {
   const sales = roundMoney(sumList(invs, i => i.total) + sumList(dsList, d => d.total));
   const profit = roundMoney(sumList(invs, i => i.profit) + sumList(dsList, d => d.profit));
   const expTotal = sumList(exps, e => e.amount);
-  const net = roundMoney(profit - expTotal);
 
   const card = (label, value, color) => `
     <div class="bg-${color}-50 border border-${color}-200 rounded-xl p-3">
@@ -2482,7 +2483,7 @@ function renderReports() {
       <td class="p-2 text-gray-700">${fmtCur(t.rev)}</td>
     </tr>`).join('') || `<tr><td colspan="3" class="p-4 text-center text-gray-400">لا بيانات</td></tr>`;
 
-  lastReport = { from, to, sales, profit, expTotal, net, count: invs.length + dsList.length, top };
+  lastReport = { from, to, sales, profit, expTotal, net: roundMoney(profit - expTotal), count: invs.length + dsList.length, top };
 }
 
 function exportReportCSV() {
