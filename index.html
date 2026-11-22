@@ -3,11 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>مركز عاشور - نظام المبيعات الذكي</title>
+<title>مركز عاشور - نظام الإدارة المتكامل</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0F5C4E">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -24,26 +23,29 @@ tailwind.config = {
 </script>
 <style>
   html { scroll-behavior: smooth; }
-  /* تكبير الخط الأساسي ليكون واضحاً في النهار */
   body { font-family:'Tajawal',sans-serif; background:#F4F7F9; font-size: 16px; overflow-x: hidden; }
+  
+  /* حركات سلسة لكل شئ */
+  .tab-view { display: none; opacity: 0; }
+  .tab-view.active { display: block; animation: slideFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  @keyframes slideFadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .modal-anim { animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+  
   @media print {
     body * { visibility:hidden; }
     #printableReceipt, #printableReceipt * { visibility:visible; }
     #printableReceipt { position:absolute; left:0; top:0; width:80mm; margin:0; padding:5mm; }
   }
-  ::-webkit-scrollbar { width:7px; height:7px; }
+  ::-webkit-scrollbar { width:6px; height:6px; }
   ::-webkit-scrollbar-track { background:#e2e8f0; }
   ::-webkit-scrollbar-thumb { background:#0F5C4E; border-radius:4px; }
-  .tab-view:not(.hidden) { animation: fadeSlideUp 0.28s cubic-bezier(0.16,1,0.3,1); }
-  .card-hover { transition: transform 0.22s ease, box-shadow 0.22s ease; }
-  .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 24px -10px rgba(15,92,78,0.22); }
-  button:active { transform: scale(0.97); }
-  .pin-dot { transition: all 0.18s ease; }
-  .header-gradient { background: linear-gradient(135deg, #0F5C4E 0%, #0A3F35 100%); }
-  .total-flash { animation: countUp 0.22s ease-out; }
-  @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes countUp { 0% { opacity:0.6; transform:scale(0.96); } 100% { opacity:1; transform:scale(1); } }
   
+  .card-hover { transition: all 0.25s ease; }
+  .card-hover:hover { transform: translateY(-3px); box-shadow: 0 10px 25px -10px rgba(15,92,78,0.3); }
+  button:active { transform: scale(0.96); }
+  .header-gradient { background: linear-gradient(135deg, #0F5C4E 0%, #0A3F35 100%); }
+
   #posProductsGrid {
     display: grid; gap: 0.75rem;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -53,23 +55,19 @@ tailwind.config = {
   @media (min-width: 1024px) { #posProductsGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); max-height: calc(100vh - 220px); } }
   @media (min-width: 1440px) { #posProductsGrid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
   
-  .pos-layout { display: grid; gap: 1rem; grid-template-columns: 1fr; width: 100%; overflow: hidden; }
+  .pos-layout { display: grid; gap: 1rem; grid-template-columns: 1fr; width: 100%; }
   @media (min-width: 1024px) {
     .pos-layout { grid-template-columns: 160px 1fr 400px; }
     .pos-sidebar { display: flex !important; }
   }
   @media (max-width: 1023px) { .pos-sidebar { display: none !important; } }
-
-  /* تنسيقات قارئ الباركود */
-  #barcode-reader { width: 100%; border-radius: 1rem; overflow: hidden; border: 2px dashed #0F5C4E; }
-  #barcode-reader video { border-radius: 1rem; object-fit: cover; }
 </style>
 </head>
 <body class="text-gray-800 antialiased min-h-screen flex flex-col">
 
 <!-- شاشة PIN -->
 <div id="pinOverlay" class="fixed inset-0 bg-white z-[100] flex items-center justify-center p-4">
-  <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl text-center border border-ashour/20">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl text-center border border-ashour/20 modal-anim">
     <div class="w-16 h-16 bg-ashour/10 text-ashour rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-ashour">
       <i class="fa-solid fa-shield-halved text-2xl text-ashour"></i>
     </div>
@@ -101,17 +99,16 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- الهيدر (تم تعديله ليتناسب مع الهاتف) -->
+<!-- الهيدر -->
 <header class="header-gradient text-white shadow-md sticky top-0 z-30 w-full">
-  <div class="max-w-[1600px] mx-auto px-3 py-2 flex flex-col md:flex-row items-center justify-between gap-2">
+  <div class="max-w-[1600px] mx-auto px-2 md:px-4 py-2 flex flex-col md:flex-row items-center justify-between gap-2">
     <div class="flex items-center justify-between w-full md:w-auto">
       <div class="flex items-center gap-2">
         <div class="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center border border-white/20">
           <i class="fa-solid fa-boxes-packing text-ashour-gold"></i>
         </div>
         <div>
-          <h1 id="headerStoreName" class="text-lg font-black">مركز عاشور للتجارة</h1>
-          <p class="text-[11px] text-emerald-200">نظام المبيعات الذكي</p>
+          <h1 id="headerStoreName" class="text-lg font-black">مركز عاشور</h1>
         </div>
       </div>
       <div class="flex md:hidden gap-1">
@@ -120,12 +117,14 @@ tailwind.config = {
       </div>
     </div>
     
-    <nav class="flex items-center gap-1 overflow-x-auto py-1 text-sm font-bold w-full md:w-auto justify-start md:justify-center" style="scrollbar-width: none;">
+    <nav class="flex items-center gap-1 overflow-x-auto py-1 text-sm font-bold w-full md:w-auto justify-start" style="scrollbar-width: none;">
       <button onclick="switchTab('pos')" id="tab-pos" class="tab-btn active bg-white/20 px-3 py-1.5 rounded-lg whitespace-nowrap"><i class="fa-solid fa-cash-register"></i> الكاشير</button>
-      <button onclick="switchTab('invoices')" id="tab-invoices" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap"><i class="fa-solid fa-file-invoice"></i> الفواتير</button>
+      <button onclick="switchTab('invoices')" id="tab-invoices" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap"><i class="fa-solid fa-file-invoice"></i> المبيعات</button>
+      <button onclick="switchTab('purchases')" id="tab-purchases" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap"><i class="fa-solid fa-cart-flatbed"></i> المشتريات</button>
       <button onclick="switchTab('products')" id="tab-products" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap"><i class="fa-solid fa-box"></i> المنتجات</button>
       <button onclick="switchTab('clients')" id="tab-clients" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap"><i class="fa-solid fa-users"></i> الزبائن</button>
       <button onclick="switchTab('companies')" id="tab-companies" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap"><i class="fa-solid fa-building"></i> الشركات</button>
+      <button onclick="switchTab('debts')" id="tab-debts" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap"><i class="fa-solid fa-hand-holding-dollar"></i> ديون الأشخاص</button>
       <button onclick="switchTab('expenses')" id="tab-expenses" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap"><i class="fa-solid fa-wallet"></i> المصاريف</button>
       <button onclick="switchTab('reports')" id="tab-reports" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap"><i class="fa-solid fa-chart-line"></i> التقارير</button>
       <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap"><i class="fa-solid fa-gear"></i> الإعدادات</button>
@@ -140,7 +139,7 @@ tailwind.config = {
 
 <main class="flex-grow max-w-[1600px] w-full mx-auto p-2 md:p-4 overflow-hidden">
   <!-- الكاشير -->
-  <div id="view-pos" class="tab-view pos-layout">
+  <div id="view-pos" class="tab-view active pos-layout">
     <aside class="pos-sidebar hidden lg:flex flex-col bg-white rounded-2xl shadow-sm border border-gray-200 p-3 max-h-[calc(100vh-140px)] sticky top-[80px]">
       <h3 class="font-black text-sm text-ashour mb-2 pb-2 border-b border-gray-100 flex items-center gap-2"><i class="fa-solid fa-tags text-ashour-gold"></i> الفئات</h3>
       <div id="posCategorySidebar" class="flex-1 overflow-y-auto space-y-1 text-sm font-bold"></div>
@@ -159,7 +158,6 @@ tailwind.config = {
           </div>
           <button onclick="openSmartInputModal()" class="bg-purple-600 hover:bg-purple-700 text-white px-2 py-2 rounded-xl text-xs font-bold transition shadow-sm"><i class="fa-solid fa-brain"></i> ذكي</button>
           <button onclick="openQuickProductModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-2 rounded-xl text-xs font-bold transition shadow-sm"><i class="fa-solid fa-plus"></i> سريع</button>
-          <button onclick="openDirectSaleModal()" class="bg-amber-600 hover:bg-amber-700 text-white px-2 py-2 rounded-xl text-xs font-bold transition shadow-sm"><i class="fa-solid fa-bag-shopping"></i> بيع</button>
         </div>
         <div id="posCategoryFilter" class="flex gap-2 overflow-x-auto pb-1 lg:hidden w-full" style="scrollbar-width: none;"></div>
       </div>
@@ -221,12 +219,11 @@ tailwind.config = {
         </button>
       </div>
     </div>
-  </div>  <!-- ================= الفواتير ================= -->
+  </div>  <!-- ================= المبيعات (الفواتير) ================= -->
   <div id="view-invoices" class="tab-view hidden space-y-3">
     <div class="bg-white p-3 rounded-2xl border shadow-sm flex flex-col md:flex-row justify-between items-center gap-3">
       <div>
-        <h2 class="text-xl font-black text-ashour">سجل الفواتير والمبيعات السريعة</h2>
-        <p class="text-xs text-gray-500">بحث ذكي برقم الفاتورة أو اسم الزبون</p>
+        <h2 class="text-xl font-black text-ashour">سجل المبيعات</h2>
       </div>
       <div class="w-full md:w-72">
         <input type="text" id="invoiceSearchInput" oninput="renderInvoicesTable()" placeholder="ابحث برقم الفاتورة أو الزبون..." class="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm font-bold">
@@ -235,18 +232,39 @@ tailwind.config = {
     <div class="bg-white rounded-2xl border shadow-sm overflow-x-auto">
       <table class="w-full text-right text-sm">
         <thead class="bg-ashour text-white font-bold">
-          <tr><th class="p-3">رقم الفاتورة</th><th class="p-3">التاريخ</th><th class="p-3">الزبون</th><th class="p-3">الإجمالي</th><th class="p-3">المدفوع</th><th class="p-3">المتبقي</th><th class="p-3">الربح</th><th class="p-3">الحالة</th><th class="p-3 text-center">إجراءات</th></tr>
+          <tr><th class="p-3">الرقم</th><th class="p-3">التاريخ</th><th class="p-3">الزبون</th><th class="p-3">الإجمالي</th><th class="p-3">المدفوع</th><th class="p-3">المتبقي</th><th class="p-3">الربح</th><th class="p-3">الحالة</th><th class="p-3 text-center">إجراءات</th></tr>
         </thead>
         <tbody id="invoicesTableBody" class="divide-y divide-gray-100 font-bold"></tbody>
       </table>
     </div>
   </div>
 
-  <!-- ================= المنتجات (بدون صور) ================= -->
+  <!-- ================= المشتريات (من الشركات) ================= -->
+  <div id="view-purchases" class="tab-view hidden space-y-3">
+    <div class="bg-white p-3 rounded-2xl border shadow-sm flex flex-col md:flex-row justify-between items-center gap-3">
+      <div>
+        <h2 class="text-xl font-black text-ashour"><i class="fa-solid fa-cart-flatbed text-ashour-gold"></i> سجل المشتريات (فواتير الشراء)</h2>
+        <p class="text-xs text-gray-500">تسجيل البضاعة الواردة من الشركات وتفاصيل الدفع</p>
+      </div>
+      <button onclick="openPurchaseModal()" class="w-full md:w-auto bg-ashour hover:bg-ashour-dark text-white font-bold text-sm px-4 py-2.5 rounded-xl transition shadow-sm">
+        <i class="fa-solid fa-plus"></i> تسجيل فاتورة شراء
+      </button>
+    </div>
+    <div class="bg-white rounded-2xl border shadow-sm overflow-x-auto">
+      <table class="w-full text-right text-sm">
+        <thead class="bg-slate-700 text-white font-bold">
+          <tr><th class="p-3">الرقم</th><th class="p-3">التاريخ</th><th class="p-3">الشركة</th><th class="p-3">الإجمالي</th><th class="p-3">المدفوع</th><th class="p-3">المتبقي (دين)</th><th class="p-3 text-center">إجراءات</th></tr>
+        </thead>
+        <tbody id="purchasesTableBody" class="divide-y divide-gray-100 font-bold"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ================= المنتجات ================= -->
   <div id="view-products" class="tab-view hidden space-y-3">
     <div class="flex flex-col md:flex-row justify-between items-center gap-3 bg-white p-3 rounded-2xl border shadow-sm">
       <div>
-        <h2 class="text-xl font-black text-ashour">إدارة المنتجات والأسعار</h2>
+        <h2 class="text-xl font-black text-ashour">إدارة المنتجات</h2>
         <p class="text-xs text-gray-500">إضافة وتعديل الأسماء والأسعار والباركود</p>
       </div>
       <div class="flex gap-2 w-full md:w-auto">
@@ -269,7 +287,7 @@ tailwind.config = {
     <div class="bg-white rounded-2xl border shadow-sm overflow-x-auto">
       <table class="w-full text-right text-sm">
         <thead class="bg-ashour text-white font-bold">
-          <tr><th class="p-3">الكود / الباركود</th><th class="p-3">اسم المنتج</th><th class="p-3">الفئة</th><th class="p-3">شراء</th><th class="p-3">تجزئة</th><th class="p-3">جملة</th><th class="p-3 text-center">إجراءات</th></tr>
+          <tr><th class="p-3">الكود / الباركود</th><th class="p-3">اسم المنتج</th><th class="p-3">الفئة</th><th class="p-3">شراء (العلبة)</th><th class="p-3">تجزئة (عادي)</th><th class="p-3">جملة (موزع)</th><th class="p-3 text-center">إجراءات</th></tr>
         </thead>
         <tbody id="productsTableBody" class="divide-y divide-gray-100 font-bold"></tbody>
       </table>
@@ -279,30 +297,116 @@ tailwind.config = {
   <!-- ================= الزبائن ================= -->
   <div id="view-clients" class="tab-view hidden space-y-3">
     <div class="flex flex-col md:flex-row justify-between items-center gap-3 bg-white p-3 rounded-2xl border shadow-sm">
-      <div><h2 class="text-xl font-black text-ashour">إدارة الزبائن والديون</h2><p class="text-xs text-gray-500">متابعة الأرصدة والمرتجعات</p></div>
+      <div><h2 class="text-xl font-black text-ashour">إدارة الزبائن</h2><p class="text-xs text-gray-500">متابعة الأرصدة والمرتجعات وكشوف الحسابات</p></div>
       <div class="flex gap-2 w-full md:w-auto">
         <input type="text" id="clientSearch" oninput="renderClientsGrid()" placeholder="بحث..." class="flex-1 md:flex-none bg-gray-50 border rounded-xl px-3 py-2 text-sm font-bold">
-        <button onclick="openClientModal()" class="bg-ashour hover:bg-ashour-dark text-white font-bold text-sm px-4 py-2 rounded-xl transition"><i class="fa-solid fa-user-plus"></i> إضافة</button>
+        <button onclick="openClientModal()" class="bg-ashour hover:bg-ashour-dark text-white font-bold text-sm px-4 py-2 rounded-xl transition"><i class="fa-solid fa-user-plus"></i> إضافة زبون</button>
       </div>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" id="clientsGrid"></div>
   </div>
 
+  <!-- صفحة الزبون الكاملة (تظهر عند الضغط على زبون) -->
+  <div id="view-client-detail" class="tab-view hidden space-y-3">
+    <div class="bg-white p-3 rounded-2xl border shadow-sm flex items-center justify-between">
+      <button onclick="switchTab('clients')" class="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-xl text-sm font-bold transition"><i class="fa-solid fa-arrow-right"></i> عودة للزبائن</button>
+      <div class="text-left md:text-center">
+        <h2 id="ledgerClientName" class="text-xl font-black text-ashour">اسم الزبون</h2>
+        <span id="ledgerClientBadge" class="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800"></span>
+      </div>
+      <button onclick="openClientModal(state.currentLedgerClientId)" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-xl text-sm font-bold transition"><i class="fa-solid fa-pen"></i> تعديل</button>
+    </div>
+
+    <div id="ledgerSummaryCards" class="grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-sm font-bold"></div>
+
+    <div class="flex flex-wrap items-center justify-between gap-2 bg-white p-2 rounded-2xl border shadow-sm">
+      <div class="flex gap-1 text-sm font-black">
+        <button id="ledgerTabStatementBtn" onclick="switchLedgerSubTab('statement')" class="px-4 py-2 rounded-xl bg-ashour text-white transition"><i class="fa-solid fa-file-lines"></i> كشف الحساب</button>
+        <button id="ledgerTabReturnsBtn" onclick="switchLedgerSubTab('returns')" class="px-4 py-2 rounded-xl bg-amber-100 text-amber-900 hover:bg-amber-200 transition"><i class="fa-solid fa-rotate-left"></i> المرتجعات</button>
+      </div>
+      <div class="flex gap-1 items-center">
+        <input type="number" step="any" id="payDebtAmount" placeholder="مبلغ التسديد" class="bg-gray-50 border border-amber-300 rounded-xl px-3 py-2 text-sm font-bold w-32">
+        <button onclick="recordDebtPayment()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition">تسديد دفعة</button>
+      </div>
+    </div>
+
+    <!-- كشف الحساب -->
+    <div id="ledgerStatementPanel" class="bg-white rounded-2xl border shadow-sm p-3 space-y-3">
+      <div class="max-h-[500px] overflow-y-auto border border-gray-200 rounded-xl">
+        <table class="w-full text-right text-sm">
+          <thead class="bg-ashour text-white font-bold sticky top-0">
+            <tr><th class="p-3">التاريخ</th><th class="p-3">التفاصيل</th><th class="p-3">مدين</th><th class="p-3">دائن</th><th class="p-3 text-center">إجراء</th></tr>
+          </thead>
+          <tbody id="ledgerTableBody" class="divide-y divide-gray-100 font-bold"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- المرتجعات (تصميم جديد وأسهل) -->
+    <div id="ledgerReturnsPanel" class="hidden bg-white rounded-2xl border shadow-sm p-3 space-y-3">
+      <p class="text-sm text-gray-600 font-bold bg-amber-50 p-3 rounded-xl border border-amber-200"><i class="fa-solid fa-info-circle text-amber-600"></i> لإرجاع منتج، اكتب الكمية بجانب اسم المنتج واضغط "تأكيد الإرجاع". سيتم خصم القيمة من حساب الزبون تلقائياً.</p>
+      <div id="clientReturnableItemsList" class="space-y-2 max-h-[400px] overflow-y-auto"></div>
+      <div id="clientReturnsHistoryBox" class="bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm">
+        <div class="font-black text-gray-700 mb-2">سجل المرتجعات السابقة:</div>
+        <div id="clientReturnsHistoryList" class="space-y-1 font-bold text-gray-600"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ================= الشركات ================= -->
   <div id="view-companies" class="tab-view hidden space-y-3">
-    <div id="companiesListSection" class="space-y-3">
-      <div class="flex flex-col md:flex-row justify-between items-center gap-3 bg-white p-3 rounded-2xl border shadow-sm">
-        <div>
-          <h2 class="text-xl font-black text-ashour"><i class="fa-solid fa-building text-ashour-gold"></i> الشركات الموردة</h2>
-        </div>
-        <div class="flex gap-2 w-full md:w-auto">
-          <input type="text" id="companySearch" oninput="renderCompaniesGrid()" placeholder="بحث..." class="flex-1 md:flex-none bg-gray-50 border rounded-xl px-3 py-2 text-sm font-bold">
-          <button onclick="openCompanyModal()" class="bg-ashour hover:bg-ashour-dark text-white font-bold text-sm px-4 py-2 rounded-xl transition"><i class="fa-solid fa-plus"></i> إضافة</button>
-        </div>
+    <div class="flex flex-col md:flex-row justify-between items-center gap-3 bg-white p-3 rounded-2xl border shadow-sm">
+      <div>
+        <h2 class="text-xl font-black text-ashour"><i class="fa-solid fa-building text-ashour-gold"></i> الشركات الموردة</h2>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="companiesGrid"></div>
+      <div class="flex gap-2 w-full md:w-auto">
+        <input type="text" id="companySearch" oninput="renderCompaniesGrid()" placeholder="بحث..." class="flex-1 md:flex-none bg-gray-50 border rounded-xl px-3 py-2 text-sm font-bold">
+        <button onclick="openCompanyModal()" class="bg-ashour hover:bg-ashour-dark text-white font-bold text-sm px-4 py-2 rounded-xl transition"><i class="fa-solid fa-plus"></i> إضافة شركة</button>
+      </div>
     </div>
-    <div id="companyDetailPage" class="hidden space-y-3"></div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" id="companiesGrid"></div>
+  </div>
+
+  <!-- صفحة الشركة الكاملة (تظهر عند الضغط على شركة) -->
+  <div id="view-company-detail" class="tab-view hidden space-y-3">
+    <div class="bg-white p-3 rounded-2xl border shadow-sm flex items-center justify-between">
+      <button onclick="switchTab('companies')" class="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-xl text-sm font-bold transition"><i class="fa-solid fa-arrow-right"></i> عودة للشركات</button>
+      <div class="text-center">
+        <h2 id="companyDetailName" class="text-xl font-black text-ashour">اسم الشركة</h2>
+        <p id="companyDetailInfo" class="text-xs text-gray-500 font-bold"></p>
+      </div>
+      <button onclick="openCompanyModal(state.activeCompanyId)" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-xl text-sm font-bold transition"><i class="fa-solid fa-pen"></i> تعديل</button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm font-bold mb-3">
+      <div class="bg-white border border-gray-200 rounded-xl p-3 shadow-sm"><span class="text-gray-500 block text-xs">الموزع</span><span id="compDetailDistributor" class="font-black text-gray-800"></span></div>
+      <div class="bg-white border border-gray-200 rounded-xl p-3 shadow-sm"><span class="text-gray-500 block text-xs">دورة التوزيع</span><span id="compDetailCycle" class="font-black text-gray-800"></span></div>
+      <div class="bg-white border border-red-200 rounded-xl p-3 shadow-sm"><span class="text-gray-500 block text-xs">إجمالي الدين للشركة</span><span id="compDetailDebt" class="font-black text-red-600"></span></div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-3 border shadow-sm space-y-3">
+      <div class="flex justify-between items-center">
+        <h3 class="text-lg font-black text-ashour"><i class="fa-solid fa-boxes-stacked text-ashour-gold"></i> منتجات الشركة</h3>
+        <button onclick="addProductDirectlyToCompany()" class="bg-ashour hover:bg-ashour-dark text-white px-3 py-1.5 rounded-lg text-sm font-bold"><i class="fa-solid fa-plus"></i> إضافة منتج</button>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="companyProductsGrid"></div>
+    </div>
+  </div>
+
+  <!-- ================= ديون الأشخاص ================= -->
+  <div id="view-debts" class="tab-view hidden space-y-3">
+    <div class="flex flex-col md:flex-row justify-between items-center gap-3 bg-white p-3 rounded-2xl border shadow-sm">
+      <div><h2 class="text-xl font-black text-ashour">ديون الأشخاص</h2><p class="text-xs text-gray-500">سجل الديون التي لك أو عليك لأشخاص (ليسوا زبائن أو شركات)</p></div>
+      <button onclick="openPersonDebtModal()" class="w-full md:w-auto bg-ashour hover:bg-ashour-dark text-white font-bold text-sm px-4 py-2.5 rounded-xl transition"><i class="fa-solid fa-plus"></i> إضافة دين جديد</button>
+    </div>
+    <div class="bg-white rounded-2xl border shadow-sm overflow-x-auto">
+      <table class="w-full text-right text-sm">
+        <thead class="bg-slate-700 text-white font-bold">
+          <tr><th class="p-3">الاسم</th><th class="p-3">الهاتف</th><th class="p-3">المبلغ المتبقي</th><th class="p-3">النوع</th><th class="p-3">الملاحظات</th><th class="p-3 text-center">إجراءات</th></tr>
+        </thead>
+        <tbody id="personDebtsTableBody" class="divide-y divide-gray-100 font-bold"></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- ================= المصاريف ================= -->
@@ -394,242 +498,271 @@ tailwind.config = {
 
 </main><!-- ================= النوافذ المنبثقة ================= -->
 
-<!-- 0. قارئ الباركود بالكاميرا (جديد) -->
+<!-- قارئ الباركود -->
 <div id="barcodeScannerModal" onclick="if(event.target===this)closeBarcodeScanner()" class="fixed inset-0 bg-black/80 z-[60] hidden items-center justify-center p-4">
-  <div class="bg-white rounded-2xl max-w-sm w-full p-4 shadow-2xl space-y-4">
+  <div class="bg-white rounded-2xl max-w-sm w-full p-4 shadow-2xl space-y-4 modal-anim">
     <div class="flex justify-between items-center">
       <h3 class="text-lg font-black text-ashour"><i class="fa-solid fa-camera"></i> مسح الباركود</h3>
       <button onclick="closeBarcodeScanner()" class="text-gray-400 hover:text-red-500 text-2xl font-bold">&times;</button>
     </div>
-    <p class="text-sm text-gray-500 font-bold text-center">وجّه الكاميرا نحو الباركود</p>
-    <div id="barcode-reader"></div>
+    <div id="barcode-reader" class="border-2 border-dashed border-ashour rounded-xl overflow-hidden"></div>
     <button onclick="closeBarcodeScanner()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 rounded-xl font-bold text-sm">إلغاء</button>
   </div>
 </div>
 
-<!-- 1. منتج سريع -->
+<!-- منتج سريع -->
 <div id="quickProductModal" onclick="if(event.target===this)closeModal('quickProductModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
-  <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4">
-    <h3 class="text-lg font-black text-indigo-700"><i class="fa-solid fa-bolt"></i> منتج سريع (للفاتورة فقط)</h3>
+  <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4 modal-anim">
+    <h3 class="text-lg font-black text-indigo-700"><i class="fa-solid fa-bolt"></i> منتج سريع</h3>
     <div class="space-y-3 text-sm font-bold">
-      <div><label class="block mb-1">اسم المنتج:</label><input type="text" id="qpName" placeholder="مثال: علبة بسكويت" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">اسم المنتج:</label><input type="text" id="qpName" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
       <div class="grid grid-cols-2 gap-2">
-        <div><label class="block mb-1">السعر:</label><input type="number" step="any" id="qpPrice" placeholder="0" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-        <div><label class="block mb-1">العدد:</label><input type="number" id="qpQty" value="1" min="1" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+        <div><label class="block mb-1">السعر:</label><input type="number" step="any" id="qpPrice" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+        <div><label class="block mb-1">العدد:</label><input type="number" id="qpQty" value="1" min="1" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
       </div>
     </div>
     <div class="flex gap-2 pt-2">
-      <button onclick="saveQuickProduct()" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700">إضافة للفاتورة</button>
+      <button onclick="saveQuickProduct()" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-sm">إضافة للفاتورة</button>
       <button onclick="closeModal('quickProductModal')" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-sm">إلغاء</button>
     </div>
   </div>
 </div>
 
-<!-- 2. بيع سريع -->
+<!-- بيع سريع -->
 <div id="directSaleModal" onclick="if(event.target===this)closeModal('directSaleModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
-  <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4">
-    <h3 class="text-lg font-black text-amber-700"><i class="fa-solid fa-bag-shopping"></i> بيع سريع (بدون فاتورة)</h3>
+  <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4 modal-anim">
+    <h3 class="text-lg font-black text-amber-700"><i class="fa-solid fa-bag-shopping"></i> بيع سريع</h3>
     <div class="space-y-3 text-sm font-bold">
-      <div><label class="block mb-1">اسم الصنف / المأخوذ:</label><input type="text" id="dsName" placeholder="مثال: علبة بسكويت" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">اسم الصنف:</label><input type="text" id="dsName" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
       <div class="grid grid-cols-2 gap-2">
-        <div><label class="block mb-1">السعر:</label><input type="number" step="any" id="dsPrice" placeholder="0" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-        <div><label class="block mb-1">العدد:</label><input type="number" id="dsQty" value="1" min="1" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+        <div><label class="block mb-1">السعر:</label><input type="number" step="any" id="dsPrice" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+        <div><label class="block mb-1">العدد:</label><input type="number" id="dsQty" value="1" min="1" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
       </div>
-      <div><label class="block mb-1">ملاحظة:</label><input type="text" id="dsNote" placeholder="اختياري..." class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">ملاحظة:</label><input type="text" id="dsNote" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
     </div>
     <div class="flex gap-2 pt-2">
-      <button onclick="saveDirectSale()" class="flex-1 bg-amber-600 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-amber-700">تسجيل فوراً</button>
+      <button onclick="saveDirectSale()" class="flex-1 bg-amber-600 text-white py-2.5 rounded-xl font-bold text-sm">تسجيل</button>
       <button onclick="closeModal('directSaleModal')" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-sm">إلغاء</button>
     </div>
   </div>
 </div>
 
-<!-- 3. منتج (إضافة / تعديل) - يحتوي على زر كاميرا للباركود -->
+<!-- منتج (إضافة/تعديل) مع كاميرا الباركود -->
 <div id="productModal" onclick="if(event.target===this)closeModal('productModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
-  <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+  <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto modal-anim">
     <h3 id="productModalTitle" class="text-lg font-black text-ashour">إضافة / تعديل منتج</h3>
     <input type="hidden" id="prodEditId">
     <div class="space-y-3 text-sm font-bold">
       <div class="grid grid-cols-2 gap-2">
         <div>
-          <label class="block mb-1">كود المنتج:</label>
+          <label class="block mb-1">الكود:</label>
           <div class="flex gap-1">
-            <input type="text" id="prodSkuInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5">
-            <button type="button" onclick="setAutoGeneratedSku()" class="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 px-2.5 rounded-xl" title="توليد كود"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
+            <input type="text" id="prodSkuInput" class="w-full bg-gray-50 border rounded-xl p-2.5">
+            <button type="button" onclick="setAutoGeneratedSku()" class="bg-emerald-100 text-emerald-800 px-2 rounded-xl"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
           </div>
         </div>
         <div>
           <label class="block mb-1 text-teal-800">الباركود:</label>
           <div class="flex gap-1">
-            <input type="text" id="prodBarcodeInput" placeholder="امسح أو اكتب" class="w-full bg-teal-50 border border-teal-300 rounded-xl p-2.5 text-teal-900">
-            <button type="button" onclick="openBarcodeScanner('prodBarcodeInput')" class="bg-teal-600 hover:bg-teal-700 text-white px-3 rounded-xl" title="تصوير الباركود"><i class="fa-solid fa-barcode"></i></button>
+            <input type="text" id="prodBarcodeInput" class="w-full bg-teal-50 border border-teal-300 rounded-xl p-2.5 text-teal-900">
+            <button type="button" onclick="openBarcodeScanner('prodBarcodeInput')" class="bg-teal-600 text-white px-2 rounded-xl"><i class="fa-solid fa-barcode"></i></button>
           </div>
         </div>
       </div>
       <div><label class="block mb-1 text-indigo-700">اسم المنتج:</label><input type="text" id="prodNameInput" class="w-full bg-indigo-50 border border-indigo-300 text-indigo-900 rounded-xl p-2.5"></div>
-      <div><label class="block mb-1">الفئة:</label><input type="text" id="prodCatInput" list="categoryList" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
-      <div><label class="block mb-1">سعر الشراء (التكلفة):</label><input type="number" step="any" id="prodCostInput" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">الفئة:</label><input type="text" id="prodCatInput" list="categoryList" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">سعر الشراء (للعلبة):</label><input type="number" step="any" id="prodCostInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
       <div class="grid grid-cols-2 gap-2 bg-amber-50 p-2 rounded-xl border border-amber-200">
-        <div><label class="block mb-1 text-emerald-700">سعر التجزئة:</label><input type="number" step="any" id="prodRetailInput" class="w-full bg-white border border-emerald-300 text-emerald-900 rounded-xl p-2.5 font-black"></div>
-        <div><label class="block mb-1 text-amber-700">سعر الجملة:</label><input type="number" step="any" id="prodWholesaleInput" class="w-full bg-white border border-amber-300 text-amber-900 rounded-xl p-2.5 font-black"></div>
+        <div><label class="block mb-1 text-emerald-700">سعر التجزئة (عادي):</label><input type="number" step="any" id="prodRetailInput" class="w-full border border-emerald-300 text-emerald-900 rounded-xl p-2.5 font-black"></div>
+        <div><label class="block mb-1 text-amber-700">سعر الجملة (موزع):</label><input type="number" step="any" id="prodWholesaleInput" class="w-full border border-amber-300 text-amber-900 rounded-xl p-2.5 font-black"></div>
       </div>
     </div>
     <div class="flex gap-2 pt-2">
-      <button onclick="saveProduct()" class="flex-1 bg-ashour text-white py-2.5 rounded-xl font-bold text-sm hover:bg-ashour-dark">حفظ</button>
+      <button onclick="saveProduct()" class="flex-1 bg-ashour text-white py-2.5 rounded-xl font-bold text-sm">حفظ</button>
       <button onclick="closeModal('productModal')" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-sm">إلغاء</button>
     </div>
   </div>
 </div>
 
-<!-- 4. إدخال ذكي -->
-<div id="smartInputModal" onclick="if(event.target===this)closeModal('smartInputModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
-  <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-xl space-y-4">
-    <h3 class="text-lg font-black text-purple-700"><i class="fa-solid fa-brain"></i> الإدخال الذكي</h3>
-    <p class="text-sm text-gray-500 leading-relaxed">اكتب كل صنف في سطر مثل: <b class="text-purple-800">كيكتي العدد 8</b></p>
-    <textarea id="smartInputText" rows="5" placeholder="كيكتي العدد 8&#10;كرنشي العدد 5" class="w-full bg-gray-50 border border-gray-300 rounded-xl p-3 text-sm font-bold"></textarea>
-    <div class="flex gap-2">
-      <button onclick="processSmartInput()" class="flex-1 bg-purple-600 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-purple-700">إضافة للفاتورة</button>
-      <button onclick="closeModal('smartInputModal')" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-sm">إلغاء</button>
-    </div>
-  </div>
-</div>
-
-<!-- 5. شركة -->
+<!-- شركة (إضافة/تعديل بيانات فقط) -->
 <div id="companyModal" onclick="if(event.target===this)closeModal('companyModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
-  <div class="bg-white rounded-2xl max-w-xl w-full p-5 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
-    <h3 id="companyModalTitle" class="text-lg font-black text-ashour"><i class="fa-solid fa-building"></i> بيانات الشركة</h3>
+  <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto modal-anim">
+    <h3 id="companyModalTitle" class="text-lg font-black text-ashour">بيانات الشركة</h3>
     <input type="hidden" id="compEditId">
     <div class="space-y-3 text-sm font-bold">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div><label class="block mb-1">اسم الشركة:</label><input type="text" id="compNameInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
-        <div><label class="block mb-1">الهاتف:</label><input type="text" id="compPhoneInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div><label class="block mb-1">العنوان:</label><input type="text" id="compAddressInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
-        <div><label class="block mb-1">الموزع:</label><input type="text" id="compDistributorInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
-      </div>
+      <div><label class="block mb-1">اسم الشركة:</label><input type="text" id="compNameInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">الهاتف:</label><input type="text" id="compPhoneInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">العنوان:</label><input type="text" id="compAddressInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">اسم الموزع:</label><input type="text" id="compDistributorInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
       <div><label class="block mb-1">دورة التوزيع:</label><input type="text" id="compCycleInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
-      <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-2">
-        <div class="flex justify-between items-center">
-          <label class="text-ashour font-black">منتجات الشركة:</label>
-          <button type="button" onclick="addCompanyProductRow()" class="bg-ashour text-white px-2.5 py-1 rounded-lg text-xs font-bold"><i class="fa-solid fa-plus"></i> إضافة</button>
-        </div>
-        <div id="compProductsRows" class="space-y-2"></div>
-      </div>
     </div>
     <div class="flex gap-2 pt-2">
-      <button onclick="saveCompany()" class="flex-1 bg-ashour text-white py-2.5 rounded-xl font-bold text-sm hover:bg-ashour-dark">حفظ</button>
+      <button onclick="saveCompany()" class="flex-1 bg-ashour text-white py-2.5 rounded-xl font-bold text-sm">حفظ</button>
       <button onclick="closeModal('companyModal')" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-sm">إلغاء</button>
     </div>
   </div>
 </div>
 
-<!-- 6. مصروف -->
+<!-- تعديل منتج شركة (يُفتح بأيقونة القلم) -->
+<div id="companyProductModal" onclick="if(event.target===this)closeModal('companyProductModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4 modal-anim">
+    <h3 class="text-lg font-black text-ashour"><i class="fa-solid fa-pen text-ashour-gold"></i> تعديل منتج الشركة</h3>
+    <input type="hidden" id="cpEditIdx">
+    <div class="space-y-3 text-sm font-bold">
+      <div><label class="block mb-1">اسم المنتج:</label><input type="text" id="cpNameInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+      <div class="grid grid-cols-2 gap-2">
+        <div><label class="block mb-1 text-xs">سعر الطرد (الشراء):</label><input type="number" step="any" id="cpBoxPriceInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+        <div><label class="block mb-1 text-xs">عدد العلب بالطرد:</label><input type="number" id="cpPiecesPerBoxInput" value="1" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div><label class="block mb-1 text-xs">سعر العلبة (الشراء):</label><input type="number" step="any" id="cpPiecePriceInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+        <div><label class="block mb-1 text-xs text-emerald-700">سعر المستهلك:</label><input type="number" step="any" id="cpConsumerPriceInput" class="w-full border border-emerald-300 rounded-xl p-2.5"></div>
+      </div>
+    </div>
+    <div class="flex gap-2 pt-2">
+      <button onclick="saveCompanyProductEdit()" class="flex-1 bg-ashour text-white py-2.5 rounded-xl font-bold text-sm">حفظ التعديل</button>
+      <button onclick="closeModal('companyProductModal')" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-sm">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- تسجيل مشتريات (فاتورة شراء) -->
+<div id="purchaseModal" onclick="if(event.target===this)closeModal('purchaseModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto modal-anim">
+    <h3 class="text-lg font-black text-ashour"><i class="fa-solid fa-cart-flatbed"></i> تسجيل فاتورة شراء جديدة</h3>
+    <div class="space-y-3 text-sm font-bold">
+      <div>
+        <label class="block mb-1">الشركة الموردة:</label>
+        <select id="purCompanySelect" class="w-full bg-gray-50 border rounded-xl p-2.5"></select>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div><label class="block mb-1">اسم المنتج / الصنف:</label><input type="text" id="purProdName" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+        <div><label class="block mb-1">عدد الطرود:</label><input type="number" id="purQtyBoxes" value="1" min="1" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div><label class="block mb-1">سعر الطرد:</label><input type="number" step="any" id="purPriceBox" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+        <div><label class="block mb-1">عدد العلب بالطرد:</label><input type="number" id="purPiecesPerBox" value="1" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div><label class="block mb-1">سعر العلبة:</label><input type="number" step="any" id="purPricePiece" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+        <div><label class="block mb-1 text-amber-700">إجمالي الفاتورة:</label><input type="number" step="any" id="purTotalAmount" class="w-full border border-amber-300 bg-amber-50 rounded-xl p-2.5 font-black"></div>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div><label class="block mb-1 text-emerald-700">المدفوع الآن:</label><input type="number" step="any" id="purPaidAmount" class="w-full border border-emerald-300 bg-emerald-50 rounded-xl p-2.5 font-black" placeholder="0"></div>
+        <div><label class="block mb-1 text-red-600">المتبقي (دين):</label><input type="text" id="purRemainingAmount" readonly class="w-full border border-red-300 bg-red-50 rounded-xl p-2.5 font-black text-red-700" value="0"></div>
+      </div>
+    </div>
+    <div class="flex gap-2 pt-2">
+      <button onclick="savePurchase()" class="flex-1 bg-ashour text-white py-2.5 rounded-xl font-bold text-sm">حفظ الفاتورة</button>
+      <button onclick="closeModal('purchaseModal')" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-sm">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ديون الأشخاص -->
+<div id="personDebtModal" onclick="if(event.target===this)closeModal('personDebtModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4 modal-anim">
+    <h3 class="text-lg font-black text-ashour"><i class="fa-solid fa-hand-holding-dollar"></i> دين شخصي جديد</h3>
+    <div class="space-y-3 text-sm font-bold">
+      <div><label class="block mb-1">اسم الشخص:</label><input type="text" id="debtPersonName" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">الهاتف:</label><input type="text" id="debtPersonPhone" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+      <div>
+        <label class="block mb-1">نوع الدين:</label>
+        <select id="debtPersonType" class="w-full bg-gray-50 border rounded-xl p-2.5">
+          <option value="take">دين لي (على الشخص)</option>
+          <option value="give">دين عليّ (أنا مدين له)</option>
+        </select>
+      </div>
+      <div><label class="block mb-1">المبلغ:</label><input type="number" step="any" id="debtPersonAmount" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">ملاحظات:</label><input type="text" id="debtPersonNotes" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+    </div>
+    <div class="flex gap-2 pt-2">
+      <button onclick="savePersonDebt()" class="flex-1 bg-ashour text-white py-2.5 rounded-xl font-bold text-sm">حفظ</button>
+      <button onclick="closeModal('personDebtModal')" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-sm">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- نافذة تسديد دفعة لشركة -->
+<div id="companyPaymentModal" onclick="if(event.target===this)closeModal('companyPaymentModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4 modal-anim">
+    <h3 class="text-lg font-black text-emerald-700"><i class="fa-solid fa-money-bill-transfer"></i> تسديد دفعة للشركة</h3>
+    <div class="space-y-3 text-sm font-bold">
+      <div><label class="block mb-1">المبلغ المدفوع:</label><input type="number" step="any" id="payCompanyAmount" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">ملاحظات:</label><input type="text" id="payCompanyNotes" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+    </div>
+    <div class="flex gap-2 pt-2">
+      <button onclick="recordCompanyPayment()" class="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-sm">تسديد</button>
+      <button onclick="closeModal('companyPaymentModal')" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-sm">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- إدخال ذكي -->
+<div id="smartInputModal" onclick="if(event.target===this)closeModal('smartInputModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-xl space-y-4 modal-anim">
+    <h3 class="text-lg font-black text-purple-700"><i class="fa-solid fa-brain"></i> الإدخال الذكي</h3>
+    <textarea id="smartInputText" rows="5" class="w-full bg-gray-50 border rounded-xl p-3 text-sm font-bold"></textarea>
+    <div class="flex gap-2">
+      <button onclick="processSmartInput()" class="flex-1 bg-purple-600 text-white py-2.5 rounded-xl font-bold text-sm">إضافة للفاتورة</button>
+      <button onclick="closeModal('smartInputModal')" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-sm">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- مصروف -->
 <div id="expenseModal" onclick="if(event.target===this)closeModal('expenseModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
-  <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4">
+  <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4 modal-anim">
     <h3 class="text-lg font-black text-purple-700"><i class="fa-solid fa-wallet"></i> تسجيل مصروف</h3>
     <div class="space-y-3 text-sm font-bold">
-      <div><label class="block mb-1">البند:</label><input type="text" id="expTitle" placeholder="أجور نقل..." class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">البند:</label><input type="text" id="expTitle" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
       <div><label class="block mb-1">المبلغ:</label><input type="number" step="any" id="expAmount" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
       <div><label class="block mb-1">ملاحظات:</label><input type="text" id="expNotes" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
     </div>
     <div class="flex gap-2 pt-2">
-      <button onclick="saveExpense()" class="flex-1 bg-purple-600 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-purple-700">حفظ</button>
+      <button onclick="saveExpense()" class="flex-1 bg-purple-600 text-white py-2.5 rounded-xl font-bold text-sm">حفظ</button>
       <button onclick="closeModal('expenseModal')" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-sm">إلغاء</button>
     </div>
   </div>
 </div>
 
-<!-- 7. لصق ذكي -->
+<!-- لصق ذكي -->
 <div id="smartPasteModal" onclick="if(event.target===this)closeModal('smartPasteModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
-  <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-xl space-y-4">
-    <h3 class="text-lg font-black text-ashour">اللصق الذكي للمنتجات</h3>
-    <p class="text-sm text-gray-500">كل سطر: <b>الاسم , الفئة , التكلفة , التجزئة , الجملة , الكود</b></p>
-    <textarea id="smartPasteText" rows="6" placeholder="بسكويت لوتس, بسكويت, 4000, 5000, 4500, 101" class="w-full bg-gray-50 border rounded-xl p-3 text-sm font-mono"></textarea>
+  <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-xl space-y-4 modal-anim">
+    <h3 class="text-lg font-black text-ashour">اللصق الذكي</h3>
+    <textarea id="smartPasteText" rows="6" class="w-full bg-gray-50 border rounded-xl p-3 text-sm font-mono"></textarea>
     <div class="flex gap-2">
-      <button onclick="processSmartPaste()" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700">إدخال الدفعة</button>
+      <button onclick="processSmartPaste()" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-sm">إدخال الدفعة</button>
       <button onclick="closeModal('smartPasteModal')" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-sm">إلغاء</button>
     </div>
   </div>
 </div>
 
-<!-- 8. زبون -->
+<!-- زبون -->
 <div id="clientModal" onclick="if(event.target===this)closeModal('clientModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
-  <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4">
+  <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4 modal-anim">
     <h3 id="clientModalTitle" class="text-lg font-black text-ashour">إضافة زبون</h3>
     <input type="hidden" id="clientEditId">
     <div class="space-y-3 text-sm font-bold">
-      <div><label class="block mb-1">الاسم الثلاثي / اسم المحل:</label><input type="text" id="clientNameInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
-      <div>
-        <label class="block mb-1.5">نوع الزبون:</label>
-        <div class="grid grid-cols-2 gap-2">
-          <label class="flex items-center gap-2 p-2.5 bg-gray-50 border rounded-xl cursor-pointer hover:bg-emerald-50"><input type="radio" name="clientTypeRadio" value="retail" checked><span>تجزئة</span></label>
-          <label class="flex items-center gap-2 p-2.5 bg-gray-50 border rounded-xl cursor-pointer hover:bg-amber-50"><input type="radio" name="clientTypeRadio" value="wholesale"><span>جملة</span></label>
-        </div>
+      <div><label class="block mb-1">الاسم:</label><input type="text" id="clientNameInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+      <div class="grid grid-cols-2 gap-2">
+        <label class="flex items-center gap-2 p-2.5 bg-gray-50 border rounded-xl cursor-pointer"><input type="radio" name="clientTypeRadio" value="retail" checked><span>تجزئة</span></label>
+        <label class="flex items-center gap-2 p-2.5 bg-gray-50 border rounded-xl cursor-pointer"><input type="radio" name="clientTypeRadio" value="wholesale"><span>جملة</span></label>
       </div>
-      <div><label class="block mb-1">رقم الهاتف:</label><input type="text" id="clientPhoneInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">الهاتف:</label><input type="text" id="clientPhoneInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
       <div><label class="block mb-1">العنوان:</label><input type="text" id="clientAddressInput" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
-      <div><label class="block mb-1">رصيد افتتاحي (دين سابق):</label><input type="number" step="any" id="clientOpeningInput" value="0" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
+      <div><label class="block mb-1">رصيد افتتاحي:</label><input type="number" step="any" id="clientOpeningInput" value="0" class="w-full bg-gray-50 border rounded-xl p-2.5"></div>
     </div>
     <div class="flex gap-2 pt-2">
-      <button onclick="saveClient()" class="flex-1 bg-ashour text-white py-2.5 rounded-xl font-bold text-sm hover:bg-ashour-dark">حفظ</button>
+      <button onclick="saveClient()" class="flex-1 bg-ashour text-white py-2.5 rounded-xl font-bold text-sm">حفظ</button>
       <button onclick="closeModal('clientModal')" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-sm">إلغاء</button>
     </div>
   </div>
 </div>
 
-<!-- 9. كشف الحساب والمرتجعات -->
-<div id="ledgerModal" onclick="if(event.target===this)closeModal('ledgerModal')" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-2 sm:p-4 overflow-y-auto">
-  <div class="bg-gray-50 rounded-2xl max-w-4xl w-full p-3 sm:p-5 shadow-2xl space-y-3 my-6 border border-ashour/20">
-    <div class="bg-white rounded-2xl p-3 border border-gray-200 flex flex-wrap justify-between items-start gap-2">
-      <div class="space-y-1">
-        <div class="flex items-center gap-2 flex-wrap">
-          <h3 id="ledgerClientName" class="text-lg font-black text-ashour">كشف حساب الزبون</h3>
-          <span id="ledgerClientBadge" class="text-xs font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800"></span>
-        </div>
-        <p id="ledgerClientPhone" class="text-xs text-gray-600 font-bold"></p>
-      </div>
-      <button onclick="closeModal('ledgerModal')" class="bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 w-8 h-8 rounded-xl flex items-center justify-center text-lg font-black">&times;</button>
-    </div>
-
-    <div id="ledgerSummaryCards" class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs font-bold"></div>
-
-    <div class="flex flex-wrap items-center justify-between gap-2 bg-white p-2 rounded-2xl border border-gray-200">
-      <div class="flex gap-1 text-xs font-black">
-        <button id="ledgerTabStatementBtn" onclick="switchLedgerSubTab('statement')" class="px-3 py-1.5 rounded-xl bg-ashour text-white transition"><i class="fa-solid fa-file-lines"></i> كشف الحساب</button>
-        <button id="ledgerTabReturnsBtn" onclick="switchLedgerSubTab('returns')" class="px-3 py-1.5 rounded-xl bg-amber-100 text-amber-900 hover:bg-amber-200 transition"><i class="fa-solid fa-rotate-left"></i> المرتجعات</button>
-      </div>
-      <div class="flex gap-1 items-center">
-        <input type="number" step="any" id="payDebtAmount" placeholder="مبلغ التسديد" class="bg-gray-50 border border-amber-300 rounded-xl px-2 py-1.5 text-xs font-bold w-28">
-        <button onclick="recordDebtPayment()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition">تسديد دفعة</button>
-      </div>
-    </div>
-
-    <div id="ledgerStatementPanel" class="bg-white rounded-2xl border border-gray-200 p-2 space-y-2">
-      <div class="max-h-72 overflow-y-auto border border-gray-200 rounded-xl">
-        <table class="w-full text-right text-xs">
-          <thead class="bg-ashour text-white font-bold sticky top-0">
-            <tr><th class="p-2">التاريخ</th><th class="p-2">التفاصيل</th><th class="p-2">مدين</th><th class="p-2">دائن</th><th class="p-2 text-center">إجراء</th></tr>
-          </thead>
-          <tbody id="ledgerTableBody" class="divide-y divide-gray-100 font-bold"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div id="ledgerReturnsPanel" class="hidden bg-white rounded-2xl border border-gray-200 p-2 space-y-2">
-      <p class="text-xs text-gray-600 font-bold">اضغط <b class="text-red-600">(+)</b> لزيادة المرتجع وخصمه، أو <b class="text-emerald-700">(-)</b> لإنقاصه:</p>
-      <div id="clientReturnableItemsList" class="space-y-2 max-h-64 overflow-y-auto"></div>
-      <div id="clientReturnsHistoryBox" class="bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs">
-        <div class="font-black text-gray-700 mb-1">سجل المرتجعات:</div>
-        <div id="clientReturnsHistoryList" class="space-y-1 font-bold text-gray-600"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 10. الإيصال -->
+<!-- الإيصال (بدون اسم الموزع والتجزئة) -->
 <div id="receiptModal" onclick="if(event.target===this)closeModal('receiptModal')" class="fixed inset-0 bg-black/75 z-[90] hidden items-center justify-center p-4 overflow-y-auto">
-  <div class="bg-white rounded-2xl max-w-sm w-full p-4 shadow-2xl relative my-8 border-2 border-ashour/20">
+  <div class="bg-white rounded-2xl max-w-sm w-full p-4 shadow-2xl relative my-8 border-2 border-ashour/20 modal-anim">
     <button onclick="closeModal('receiptModal')" class="absolute left-3 top-3 text-gray-400 hover:text-gray-700 text-2xl font-bold">&times;</button>
     <div id="printableReceipt" class="p-3 text-sm text-black border border-dashed border-gray-300 bg-white rounded-lg">
       <div class="text-center space-y-1 mb-2">
@@ -642,7 +775,6 @@ tailwind.config = {
         <div class="flex justify-between"><span>رقم الفاتورة:</span><span id="recNum" class="font-black"></span></div>
         <div class="flex justify-between"><span>التاريخ:</span><span id="recDate"></span></div>
         <div class="flex justify-between"><span>الزبون:</span><span id="recClient" class="font-black"></span></div>
-        <div class="flex justify-between"><span>طريقة الدفع:</span><span id="recPayType" class="font-black"></span></div>
       </div>
       <div class="border-b border-black border-dashed my-2"></div>
       <table class="w-full text-right text-xs mb-2 font-bold">
@@ -661,18 +793,16 @@ tailwind.config = {
       <div class="text-center text-xs space-y-1"><p class="font-black">شكراً لتعاملكم معنا!</p></div>
     </div>
     <div class="mt-3 grid grid-cols-2 gap-2">
-      <button onclick="saveReceiptAsImage()" class="bg-emerald-600 text-white py-2 rounded-xl font-bold text-sm hover:bg-emerald-700 flex items-center justify-center gap-1"><i class="fa-solid fa-image"></i> حفظ صورة</button>
-      <button onclick="shareReceiptImage()" class="bg-indigo-600 text-white py-2 rounded-xl font-bold text-sm hover:bg-indigo-700 flex items-center justify-center gap-1"><i class="fa-solid fa-share-nodes"></i> مشاركة</button>
-      <button onclick="window.print()" class="bg-ashour text-white py-2 rounded-xl font-bold text-sm hover:bg-ashour-dark flex items-center justify-center gap-1"><i class="fa-solid fa-print"></i> طباعة</button>
-      <button onclick="closeModal('receiptModal')" class="bg-gray-200 text-gray-700 py-2 rounded-xl font-bold text-sm hover:bg-gray-300">إغلاق</button>
+      <button onclick="saveReceiptAsImage()" class="bg-emerald-600 text-white py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-1"><i class="fa-solid fa-image"></i> حفظ صورة</button>
+      <button onclick="shareReceiptImage()" class="bg-indigo-600 text-white py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-1"><i class="fa-solid fa-share-nodes"></i> مشاركة</button>
+      <button onclick="window.print()" class="bg-ashour text-white py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-1"><i class="fa-solid fa-print"></i> طباعة</button>
+      <button onclick="closeModal('receiptModal')" class="bg-gray-200 text-gray-700 py-2 rounded-xl font-bold text-sm">إغلاق</button>
     </div>
   </div>
 </div>
 
-<!-- datalist للفئات -->
 <datalist id="categoryList"></datalist>
 
-<!-- استدعاء الملفات الخارجية -->
 <script src="db.js"></script>
 <script src="app.js"></script>
 
