@@ -21,7 +21,6 @@ function sumList(arr, getter) {
   return t;
 }
 
-// تنسيق الأرقام بفواصل كل 3 خانات مع إبقاء القيمة الرقمية دقيقة: 646 أو 6,255
 function fmt(n) {
   const num = roundMoney(n);
   const parts = String(num).split('.');
@@ -66,6 +65,7 @@ const IMPORTED_PRODUCTS = [
 /* ==================== State ==================== */
 let state = {};
 let isCheckoutSubmitting = false;
+let currentDebtTab = 'take'; // 'take' = لي | 'give' = له
 
 function defaultState() {
   return {
@@ -99,7 +99,7 @@ function defaultState() {
     invoiceCounter: 1000,
     cart: [],
     selectedPosCategory: 'الكل',
-    posPriceOverride: null, // 'retail' | 'wholesale' | null (تلقائي حسب الزبون)
+    posPriceOverride: null,
     currentLedgerClientId: null,
     currentReceiptInv: null,
     activeCompanyId: null
@@ -271,14 +271,14 @@ function switchTab(tabId) {
   if (tabId === 'settings') { loadStoreInfoToSettings(); refreshStorageStatus(); }
   if (tabId === 'reports') renderReports();
   if (tabId === 'purchases') renderPurchases();
-  if (tabId === 'debts') renderPersonDebts();
+  if (tabId === 'debts') switchDebtTab(currentDebtTab || 'take');
   if (tabId === 'clients') renderClientsGrid();
   if (tabId === 'companies') renderCompaniesGrid();
 
   renderAll();
 }
 
-const MODAL_IDS = ['barcodeScannerModal', 'quickProductModal', 'directSaleModal', 'noInvoiceModal', 'productModal', 'companyModal', 'companyProductModal', 'purchaseModal', 'personDebtModal', 'companyPaymentModal', 'receiptModal', 'clientModal'];
+const MODAL_IDS = ['barcodeScannerModal', 'quickProductModal', 'directSaleModal', 'productModal', 'companyModal', 'companyProductModal', 'purchaseModal', 'personDebtModal', 'companyPaymentModal', 'receiptModal', 'clientModal'];
 
 window.addEventListener('popstate', () => {
   if ($('barcodeScannerModal') && !$('barcodeScannerModal').classList.contains('hidden')) {
@@ -447,7 +447,7 @@ function selectClient(id, label) {
   $('posClientSelect').value = id;
   $('selectedClientText').textContent = label;
   $('clientDropdownList').classList.add('hidden');
-  state.posPriceOverride = null; // مواءمة التسعيرة افتراضياً مع نوع الزبون الجديد
+  state.posPriceOverride = null;
   onPosClientChange();
 }
 function toggleClientDropdown() {
@@ -727,7 +727,6 @@ async function checkoutPOS() {
   const paidRecorded = roundMoney(Math.min(paidEntered, total));
   const remaining = roundMoney(total - paidRecorded);
 
-  // منع تسجيل دين على "زبون نقدي مباشر" غير المحدد
   if (remaining > 0 && client.id === 'c1') {
     return warn('اختيار الزبون مطلوب', 'لتسجيل فاتورة آجلة أو جزئية، يرجى اختيار زبون مسجل بدلاً من الزبون النقدي المباشر.', 'warning');
   }
@@ -849,7 +848,7 @@ async function closeBarcodeScanner() {
   modal.style.display = 'none';
 }
 
-/* ==================== Direct Sale & No-Invoice ==================== */
+/* ==================== Direct Sale ==================== */
 function openDirectSaleModal() {
   $('dsName').value = '';
   $('dsQty').value = '1';
@@ -902,41 +901,6 @@ async function saveDirectSale() {
   closeModal('directSaleModal');
   renderAll();
   toast(`تم تسجيل ${qty} × ${name}`);
-}
-
-function openNoInvoiceModal() {
-  $('niName').value = '';
-  $('niQty').value = '2';
-  $('niPrice').value = '';
-  $('niNote').value = 'للبيت';
-  openModal('noInvoiceModal');
-}
-
-async function saveNoInvoiceItem() {
-  const name = $('niName').value.trim();
-  const qty = Math.max(1, parseInt($('niQty').value, 10) || 1);
-  const price = Math.max(0, toNum($('niPrice').value));
-  const note = $('niNote').value.trim() || 'بدون فاتورة';
-  if (!name) return warn('خطأ', 'أدخل اسم الصنف');
-
-  const total = calcLineTotal(price, qty);
-  const entry = {
-    id: 'NOINV-' + Date.now(),
-    ts: Date.now(),
-    date: nowStr(),
-    name,
-    qty,
-    price,
-    total,
-    note
-  };
-  state.noInvoiceItems.push(entry);
-  logAudit('بدون فاتورة', `${qty} × ${name} (${note})`);
-  const ok = await saveToStorage();
-  if (!ok) { state.noInvoiceItems.pop(); return; }
-  closeModal('noInvoiceModal');
-  renderAll();
-  toast(`تم تسجيل ${qty} × ${name} بدون فاتورة`);
 }
 
 /* ==================== Products & Quick Product ==================== */
@@ -1345,9 +1309,7 @@ function deletePayment(payId) {
     switchLedgerSubTab('statement');
     toast('تم الحذف');
   });
-}
-
-/* ==================== Companies & Purchases ==================== */
+}/* ==================== Companies & Purchases ==================== */
 function getCompanyDebt(companyId) {
   const purchasesRemaining = sumList(state.purchases.filter(p => p.companyId === companyId && p.status === 'active'), p => p.remaining);
   const paymentsMade = sumList(state.companyPayments.filter(p => p.companyId === companyId), p => p.amount);
@@ -1743,26 +1705,66 @@ async function recordCompanyPayment() {
   toast('تم تسجيل الدفعة');
 }
 
-/* ==================== Person Debts ==================== */
+/* ==================== Person Debts (Two Tabs: لي / له) ==================== */
+let currentDebtTab = currentDebtTab || 'take';
+
+function switchDebtTab(type) {
+  currentDebtTab = type === 'give' ? 'give' : 'take';
+  const isTake = currentDebtTab === 'take';
+
+  const takeBtn = $('debtTabTake');
+  const giveBtn = $('debtTabGive');
+  if (takeBtn) {
+    takeBtn.className = isTake
+      ? 'px-5 py-2 rounded-xl text-sm font-bold transition bg-emerald-600 text-white'
+      : 'px-5 py-2 rounded-xl text-sm font-bold transition bg-slate-100 text-slate-700 hover:bg-slate-200';
+  }
+  if (giveBtn) {
+    giveBtn.className = !isTake
+      ? 'px-5 py-2 rounded-xl text-sm font-bold transition bg-rose-600 text-white'
+      : 'px-5 py-2 rounded-xl text-sm font-bold transition bg-slate-100 text-slate-700 hover:bg-slate-200';
+  }
+
+  const head = $('debtTableHead');
+  if (head) head.className = isTake ? 'bg-emerald-700 text-white font-bold' : 'bg-rose-700 text-white font-bold';
+
+  const addLabel = $('debtAddBtnLabel');
+  if (addLabel) addLabel.textContent = isTake ? 'لي' : 'له';
+
+  $('debtSummaryTake')?.classList.toggle('hidden', !isTake);
+  $('debtSummaryGive')?.classList.toggle('hidden', isTake);
+
+  renderPersonDebts();
+}
+
 function renderPersonDebts() {
-  $('personDebtsTableBody').innerHTML = state.personDebts.map(d => `
+  const type = currentDebtTab || 'take';
+  const isTake = type === 'take';
+  const list = state.personDebts.filter(d => (d.type || 'take') === type);
+
+  const totalTake = sumList(state.personDebts.filter(d => d.type === 'take'), d => d.amount);
+  const totalGive = sumList(state.personDebts.filter(d => d.type === 'give'), d => d.amount);
+  if ($('debtSumTake')) $('debtSumTake').textContent = fmtCur(totalTake);
+  if ($('debtSumGive')) $('debtSumGive').textContent = fmtCur(totalGive);
+
+  $('personDebtsTableBody').innerHTML = list.map(d => `
     <tr class="hover:bg-slate-50 border-b border-slate-100">
       <td class="p-3 font-bold text-slate-800">${esc(d.name)}</td>
-      <td class="p-3 text-slate-600">${esc(d.phone)}</td>
-      <td class="p-3 font-bold ${d.type === 'take' ? 'text-rose-600' : 'text-emerald-700'}">${fmtCur(d.amount)}</td>
-      <td class="p-3"><span class="px-2 py-0.5 rounded text-xs font-bold ${d.type === 'take' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-800'}">${d.type === 'take' ? 'دين لي (على الشخص)' : 'دين عليّ (أنا مدين)'}</span></td>
-      <td class="p-3 text-slate-500">${esc(d.notes)}</td>
+      <td class="p-3 text-slate-600">${esc(d.phone || '-')}</td>
+      <td class="p-3 font-bold ${isTake ? 'text-emerald-700' : 'text-rose-600'}">${fmtCur(d.amount)}</td>
+      <td class="p-3 text-slate-500">${esc(d.notes || '-')}</td>
       <td class="p-3 text-center">
         <button onclick="deletePersonDebt('${esc(d.id)}')" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash"></i></button>
       </td>
-    </tr>`).join('') || `<tr><td colspan="6" class="p-6 text-center text-slate-400 text-sm">لا توجد ديون مسجلة</td></tr>`;
+    </tr>`).join('') || `<tr><td colspan="5" class="p-6 text-center text-slate-400 text-sm">لا توجد ديون مسجلة في هذا التبويب</td></tr>`;
 }
 
-function openPersonDebtModal() {
+function openPersonDebtModal(type) {
   $('debtPersonName').value = '';
   $('debtPersonPhone').value = '';
   $('debtPersonAmount').value = '';
   $('debtPersonNotes').value = '';
+  $('debtPersonType').value = type || currentDebtTab || 'take';
   openModal('personDebtModal');
 }
 
@@ -1777,11 +1779,12 @@ async function savePersonDebt() {
 
   const newDebt = { id: 'DEBT-' + Date.now(), ts: Date.now(), name, phone, type, amount, notes };
   state.personDebts.push(newDebt);
-  logAudit('دين شخصي', `${name} - ${fmtCur(amount)}`);
+  logAudit('دين شخصي', `${name} - ${fmtCur(amount)} (${type === 'take' ? 'لي' : 'له'})`);
   const ok = await saveToStorage();
   if (!ok) { state.personDebts.pop(); return; }
   closeModal('personDebtModal');
-  renderPersonDebts();
+  currentDebtTab = type;
+  switchDebtTab(type);
   toast('تم الحفظ');
 }
 
@@ -1810,49 +1813,21 @@ function renderInvoicesTable() {
       ? 'cancelled'
       : (toNum(inv.remaining) > 0 ? (toNum(inv.paid) > 0 ? 'partial' : 'debt') : 'cash');
     return {
-      kind: 'invoice',
-      id: inv.id,
-      ts: inv.ts || 0,
-      date: inv.date,
-      clientName: inv.clientName,
-      total: toNum(inv.total),
-      paid: toNum(inv.paid),
-      remaining: toNum(inv.remaining),
-      profit: toNum(inv.profit),
-      status: inv.status,
-      filterCategory: payKind
+      kind: 'invoice', id: inv.id, ts: inv.ts || 0, date: inv.date,
+      clientName: inv.clientName, total: toNum(inv.total), paid: toNum(inv.paid),
+      remaining: toNum(inv.remaining), profit: toNum(inv.profit), status: inv.status, filterCategory: payKind
     };
   });
 
   const directRows = state.directSales.map(ds => ({
-    kind: 'direct',
-    id: ds.id,
-    ts: ds.ts || 0,
-    date: ds.date,
+    kind: 'direct', id: ds.id, ts: ds.ts || 0, date: ds.date,
     clientName: `بيع سريع (${ds.qty} × ${ds.name})`,
-    total: toNum(ds.total),
-    paid: toNum(ds.paid != null ? ds.paid : ds.total),
-    remaining: toNum(ds.remaining || 0),
-    profit: toNum(ds.profit),
-    status: 'direct',
-    filterCategory: 'cash'
+    total: toNum(ds.total), paid: toNum(ds.paid != null ? ds.paid : ds.total),
+    remaining: toNum(ds.remaining || 0), profit: toNum(ds.profit),
+    status: 'direct', filterCategory: 'cash'
   }));
 
-  const noInvRows = state.noInvoiceItems.map(ni => ({
-    kind: 'no_invoice',
-    id: ni.id,
-    ts: ni.ts || 0,
-    date: ni.date,
-    clientName: `بدون فاتورة (${ni.qty} × ${ni.name} — ${ni.note})`,
-    total: toNum(ni.total),
-    paid: 0,
-    remaining: 0,
-    profit: 0,
-    status: 'no_invoice',
-    filterCategory: 'no_invoice'
-  }));
-
-  const list = [...invRows, ...directRows, ...noInvRows]
+  const list = [...invRows, ...directRows]
     .filter(row => {
       if (statusFilter !== 'all' && row.filterCategory !== statusFilter) return false;
       if (fromDate || toDate) {
@@ -1865,7 +1840,7 @@ function renderInvoicesTable() {
     })
     .sort((a, b) => b.ts - a.ts);
 
-  const activeSalesRows = list.filter(r => r.status !== 'cancelled' && r.kind !== 'no_invoice');
+  const activeSalesRows = list.filter(r => r.status !== 'cancelled');
   const totalSales = sumList(activeSalesRows, r => r.total);
   const totalProfit = sumList(activeSalesRows, r => r.profit);
   const totalRemaining = sumList(activeSalesRows, r => r.remaining);
@@ -1879,19 +1854,6 @@ function renderInvoicesTable() {
   }
 
   $('invoicesTableBody').innerHTML = list.map(row => {
-    if (row.kind === 'no_invoice') {
-      return `<tr class="hover:bg-slate-50 border-b border-slate-100 bg-slate-50/60">
-        <td class="p-3 text-slate-700 font-bold">${esc(row.id)}</td>
-        <td class="p-3 text-slate-500 whitespace-nowrap">${esc(row.date)}</td>
-        <td class="p-3 text-slate-800">${esc(row.clientName)}</td>
-        <td class="p-3 text-slate-600">${fmtCur(row.total)}</td>
-        <td class="p-3 text-slate-400">—</td>
-        <td class="p-3 text-slate-400">—</td>
-        <td class="p-3 text-slate-400">—</td>
-        <td class="p-3"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-200 text-slate-800">بدون فاتورة</span></td>
-        <td class="p-3 text-center whitespace-nowrap"><button onclick="deleteNoInvoiceItem('${esc(row.id)}')" class="text-rose-600 hover:underline font-bold"><i class="fa-solid fa-trash"></i></button></td>
-      </tr>`;
-    }
     if (row.kind === 'direct') {
       return `<tr class="hover:bg-amber-50/40 border-b border-slate-100 bg-amber-50/20">
         <td class="p-3 text-amber-700 font-bold">${esc(row.id)}</td>
@@ -1936,19 +1898,6 @@ function deleteDirectSale(id) {
     logAudit('حذف بيع سريع', removed ? `${removed.name} (${fmtCur(removed.total)})` : id);
     const ok = await saveToStorage();
     if (!ok) { if (removed) state.directSales.push(removed); return; }
-    renderAll();
-    toast('تم الحذف');
-  });
-}
-
-function deleteNoInvoiceItem(id) {
-  Swal.fire({ title: 'حذف السجل؟', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6', confirmButtonText: 'نعم', cancelButtonText: 'إلغاء' }).then(async res => {
-    if (!res.isConfirmed) return;
-    const removed = state.noInvoiceItems.find(d => d.id === id);
-    state.noInvoiceItems = state.noInvoiceItems.filter(d => d.id !== id);
-    logAudit('حذف سجل بدون فاتورة', removed ? removed.name : id);
-    const ok = await saveToStorage();
-    if (!ok) { if (removed) state.noInvoiceItems.push(removed); return; }
     renderAll();
     toast('تم الحذف');
   });
@@ -2172,6 +2121,15 @@ function importDataBackup(ev) {
 }
 
 /* ==================== Receipt & WhatsApp Sharing ==================== */
+function normalizePhoneForWA(raw) {
+  if (!raw || raw === '-') return null;
+  let p = String(raw).replace(/\D/g, '');
+  if (!p) return null;
+  if (p.startsWith('00')) p = p.slice(2);
+  if (p.startsWith('0')) p = '963' + p.slice(1);
+  return p.length >= 8 ? p : null;
+}
+
 function showReceiptModal(inv) {
   state.currentReceiptInv = inv;
   const client = state.clients.find(c => c.id === inv.clientId) || { id: null };
@@ -2228,7 +2186,14 @@ function shareReceiptWhatsApp() {
     ...(toNum(inv.remaining) > 0 ? [`المتبقي: *${fmtCur(inv.remaining)}*`] : []),
     ...(toNum(inv.changeGiven) > 0 ? [`الباقي للزبون: ${fmtCur(inv.changeGiven)}`] : [])
   ];
-  window.open(`https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
+  const text = lines.join('\n');
+
+  const client = state.clients.find(c => c.id === inv.clientId);
+  const phone = client ? normalizePhoneForWA(client.phone) : null;
+  const url = phone
+    ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
+    : `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(url, '_blank');
 }
 
 async function generateReceiptCanvas() {
@@ -2276,6 +2241,7 @@ async function shareReceiptImage() {
   }
 }
 
+/* ==================== Modals ==================== */
 function openModal(id) {
   const el = $(id);
   if (!el) return;
@@ -2332,5 +2298,6 @@ window.addEventListener('DOMContentLoaded', async function () {
   initPOSCategories();
   loadStoreInfoToSettings();
   renderAll();
+  switchDebtTab(currentDebtTab || 'take');
   setTimeout(() => { const q = $('quickEntryInput'); if (q) q.focus(); }, 300);
 });
