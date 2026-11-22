@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ashour-pos-v1';
+const CACHE_NAME = 'ashour-pos-v4';
 const ASSETS = [
   './',
   './index.html',
