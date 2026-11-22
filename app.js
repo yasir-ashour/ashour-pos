@@ -102,16 +102,26 @@ function defaultState() {
     posPriceOverride: null,
     currentLedgerClientId: null,
     currentReceiptInv: null,
-    activeCompanyId: null
+    activeCompanyId: null,
+    lastUpdated: 0 // يستخدم للمزامنة السحابية
   };
 }
 
 async function saveToStorage() {
+  // 1. الحفظ المحلي (IndexedDB + localStorage)
   const result = await AshourDB.save(state);
   if (!result.ok) {
-    Swal.fire({ icon: 'error', title: 'فشل الحفظ!', html: `تعذّر حفظ البيانات.<br><small>${esc(result.errors.join(' | '))}</small>`, confirmButtonColor: '#d33' });
+    Swal.fire({ icon: 'error', title: 'فشل الحفظ المحلي!', html: `تعذّر حفظ البيانات.<br><small>${esc(result.errors.join(' | '))}</small>`, confirmButtonColor: '#d33' });
+    return false;
   }
-  return result.ok;
+
+  // 2. الحفظ السحابي (إذا كان المستخدم مسجلاً للدخول)
+  if (window.FireSync && window.FireSync.currentUser) {
+    state.lastUpdated = Date.now();
+    await window.FireSync.saveToCloud(state);
+  }
+
+  return true;
 }
 
 let backupTimer = null;
@@ -1706,8 +1716,6 @@ async function recordCompanyPayment() {
 }
 
 /* ==================== Person Debts (Two Tabs: لي / له) ==================== */
-let currentDebtTab = currentDebtTab || 'take';
-
 function switchDebtTab(type) {
   currentDebtTab = type === 'give' ? 'give' : 'take';
   const isTake = currentDebtTab === 'take';
@@ -2299,5 +2307,9 @@ window.addEventListener('DOMContentLoaded', async function () {
   loadStoreInfoToSettings();
   renderAll();
   switchDebtTab(currentDebtTab || 'take');
+  
+  // تهيئة المزامنة السحابية (Firebase)
+  if (window.FireSync) window.FireSync.init();
+
   setTimeout(() => { const q = $('quickEntryInput'); if (q) q.focus(); }, 300);
 });
