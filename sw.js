@@ -1,14 +1,14 @@
-const CACHE_NAME = 'ashour-pos-v4';
+const CACHE_NAME = 'ashour-pos-v5';
 const ASSETS = [
   './',
   './index.html',
   './db.js',
   './app.js',
   './manifest.json',
+  './icon.svg',
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/sweetalert2@11',
   'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
-  'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
 ];
 
@@ -23,7 +23,6 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // تجاهل الطلبات التي ليست من الموقع نفسه إذا لزم الأمر
   if (e.request.url.includes('firebase') || e.request.url.includes('supabase')) return;
   e.respondWith(
     caches.match(e.request).then((cached) => {
