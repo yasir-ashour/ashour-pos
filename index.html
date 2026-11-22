@@ -165,6 +165,12 @@ tailwind.config = {
     <div class="hidden md:flex items-center gap-2">
       <button onclick="exportDataBackup()" class="bg-emerald-500 hover:bg-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold transition"><i class="fa-solid fa-cloud-arrow-down"></i> نسخة احتياطية</button>
       <button onclick="lockApp()" class="bg-rose-500/90 hover:bg-rose-600 px-3 py-1.5 rounded-lg text-xs font-bold transition"><i class="fa-solid fa-lock"></i> قفل</button>
+      
+      <!-- زر جوجل -->
+      <button id="googleLoginBtn" class="bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
+        <i class="fa-brands fa-google"></i> ربط الحساب
+      </button>
+      <span id="syncStatus" class="text-xs font-bold opacity-80"></span>
     </div>
   </div>
 </header>
@@ -958,6 +964,42 @@ tailwind.config = {
 </div>
 
 <datalist id="categoryList"></datalist>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY_HERE", // ⚠️ ضع المفتاح الخاص بك هنا
+    authDomain: "ashour-pos.firebaseapp.com",
+    projectId: "ashour-pos",
+    storageBucket: "ashour-pos.appspot.com",
+    messagingSenderId: "619934148936",
+    appId: "1:619934148936:web:2ab4014729d64fb8786b7d"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  window.firebaseAuth = getAuth(app);
+  window.firebaseDB = getFirestore(app);
+  window.googleProvider = new GoogleAuthProvider();
+  
+  window.firebaseSignIn = signInWithPopup;
+  window.firebaseSignOut = signOut;
+  window.firebaseOnAuthStateChanged = onAuthStateChanged;
+  window.firebaseDoc = doc;
+  window.firebaseSetDoc = setDoc;
+  window.firebaseGetDoc = getDoc;
+
+  enableIndexedDbPersistence(window.firebaseDB).catch((err) => {
+    if (err.code == 'failed-precondition') console.warn("Persistence failed: Multiple tabs open");
+    else if (err.code == 'unimplemented') console.warn("Persistence not supported");
+  });
+</script>
+
+<!-- استدعاء ملف المزامنة قبل app.js -->
+<script src="firebase-sync.js"></script>
 
 <script src="db.js"></script>
 <script src="app.js"></script>
