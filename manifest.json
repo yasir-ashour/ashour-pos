@@ -1,4 +1,5 @@
 {
+  "id": "/ashour-pos/",
   "name": "مركز عاشور - نظام المبيعات",
   "short_name": "عاشور POS",
   "description": "نظام ذكي لإدارة المبيعات والمخزون ونقاط البيع",
@@ -28,6 +29,20 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://yasir-ashour.github.io/ashour-pos/screenshot-narrow.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "https://yasir-ashour.github.io/ashour-pos/screenshot-wide.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide"
     }
   ]
 }
