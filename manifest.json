@@ -2,7 +2,8 @@
   "name": "مركز عاشور - نظام المبيعات",
   "short_name": "عاشور POS",
   "description": "نظام ذكي لإدارة المبيعات والمخزون ونقاط البيع",
-  "start_url": "./index.html",
+  "start_url": "/ashour-pos/index.html",
+  "scope": "/ashour-pos/",
   "display": "standalone",
   "background_color": "#041226",
   "theme_color": "#0a2e5c",
@@ -11,19 +12,19 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "./icon-192.png",
+      "src": "https://yasir-ashour.github.io/ashour-pos/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./icon-512.png",
+      "src": "https://yasir-ashour.github.io/ashour-pos/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./maskable-512.png",
+      "src": "https://yasir-ashour.github.io/ashour-pos/maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
