@@ -8,6 +8,7 @@
   "theme_color": "#0F5C4E",
   "dir": "rtl",
   "lang": "ar",
+  "orientation": "any",
   "icons": [
     {
       "src": "./icon-192.png",
