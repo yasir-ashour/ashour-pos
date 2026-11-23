@@ -7,13 +7,16 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0F5C4E">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="icon" type="image/svg+xml" href="icon.svg">
-<link rel="apple-touch-icon" href="icon.svg">
+<!-- الأيقونات الجديدة -->
+<link rel="icon" type="image/jpeg" href="https://i.ibb.co/PvNnZTm7/1795452930328.jpg">
+<link rel="apple-touch-icon" href="https://i.ibb.co/gFHZkNRK/1795452937442.jpg">
+
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+<!-- إضافة خطوط Cairo و Montserrat لشاشة البداية -->
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@500;600;700&family=Cairo:wght@600;800&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script>
 tailwind.config = {
@@ -43,6 +46,66 @@ tailwind.config = {
     font-variant-numeric: tabular-nums;
   }
 
+  /* ================= شاشة البداية (Splash Screen) ================= */
+  #ashour-intro {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: radial-gradient(circle at center, #0d2240 0%, #071326 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Cairo', sans-serif;
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .ashour-splash-container {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 25px 40px;
+    border-radius: 24px;
+    background: rgba(13, 34, 64, 0.45);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 229, 255, 0.15);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 229, 255, 0.1);
+    animation: containerPop 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    direction: ltr;
+  }
+  .ashour-splash-container .logo-wrapper {
+    position: relative; width: 95px; height: 95px;
+    display: flex; justify-content: center; align-items: center;
+    animation: floatPulse 3.5s ease-in-out infinite 1.4s;
+  }
+  .ashour-splash-container .logo-glow {
+    position: absolute; width: 100%; height: 100%;
+    background: radial-gradient(circle, rgba(0, 229, 255, 0.45) 0%, transparent 70%);
+    filter: blur(12px); opacity: 0; animation: glowFadeIn 1.2s ease forwards 0.5s;
+  }
+  .ashour-splash-container .shield-path { stroke-dasharray: 320; stroke-dashoffset: 320; animation: drawStroke 1s cubic-bezier(0.65, 0, 0.35, 1) forwards; }
+  .ashour-splash-container .letter-a-path { stroke-dasharray: 260; stroke-dashoffset: 260; animation: drawStroke 0.9s cubic-bezier(0.65, 0, 0.35, 1) forwards 0.3s; }
+  .ashour-splash-container .arrow-path { stroke-dasharray: 200; stroke-dashoffset: 200; animation: drawStroke 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards 0.65s; }
+  .ashour-splash-container .brand-text { display: flex; flex-direction: column; align-items: flex-start; overflow: hidden; }
+  .ashour-splash-container .ar-title { font-family: 'Cairo', sans-serif; font-size: 1.15rem; font-weight: 600; color: #e5c17b; letter-spacing: 0.5px; opacity: 0; transform: translateY(15px); animation: slideUpFade 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards 0.55s; margin-bottom: -6px; }
+  .ashour-splash-container .en-title { font-family: 'Montserrat', sans-serif; font-size: 2.5rem; font-weight: 800; letter-spacing: 1px; background: linear-gradient(90deg, #ffffff 0%, #bfefff 50%, #ffffff 100%); background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent; opacity: 0; transform: translateX(-25px); animation: slideRightFade 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards 0.75s, shimmerText 3s linear infinite 1.5s; }
+  .ashour-splash-container .subtitle { font-family: 'Cairo', sans-serif; font-size: 1rem; font-weight: 600; color: #00e5ff; opacity: 0; transform: translateY(-10px); animation: slideDownFade 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards 0.95s; display: flex; align-items: center; gap: 6px; }
+  .ashour-splash-container .subtitle::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #00e5ff; box-shadow: 0 0 8px #00e5ff; }
+
+  @keyframes containerPop { 0% { opacity: 0; transform: scale(0.92); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes drawStroke { to { stroke-dashoffset: 0; } }
+  @keyframes glowFadeIn { to { opacity: 1; } }
+  @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideRightFade { to { opacity: 1; transform: translateX(0); } }
+  @keyframes slideDownFade { to { opacity: 1; transform: translateY(0); } }
+  @keyframes shimmerText { to { background-position: 200% center; } }
+  @keyframes floatPulse { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-4px) scale(1.03); } }
+
+  @media (max-width: 480px) {
+    .ashour-splash-container { flex-direction: column; text-align: center; gap: 14px; padding: 25px; }
+    .ashour-splash-container .brand-text { align-items: center; }
+    .ashour-splash-container .en-title { font-size: 2rem; }
+  }
+
+  /* ================= تنسيقات النظام الأساسية ================= */
   .tab-view { display: none; opacity: 0; }
   .tab-view.active { display: block; animation: slideFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   @keyframes slideFadeIn {
@@ -96,6 +159,35 @@ tailwind.config = {
 </style>
 </head>
 <body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+<!-- شاشة البداية -->
+<div id="ashour-intro">
+  <div class="ashour-splash-container">
+    <div class="logo-wrapper">
+      <div class="logo-glow"></div>
+      <svg width="90" height="90" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="cyanGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#1a73e8"/>
+            <stop offset="100%" stop-color="#00e5ff"/>
+          </linearGradient>
+          <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#f7dfa5"/>
+            <stop offset="100%" stop-color="#c99b42"/>
+          </linearGradient>
+        </defs>
+        <path class="shield-path" d="M50 10 L82 22 V48 C82 70 50 88 50 88 C50 88 18 70 18 48 V22 L50 10 Z" stroke="url(#cyanGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path class="letter-a-path" d="M32 72 L50 26 L68 72" stroke="url(#goldGrad)" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path class="arrow-path" d="M24 62 C38 62, 46 52, 76 30 M62 28 H77 V43" stroke="url(#cyanGrad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <span class="ar-title">عاشور</span>
+      <h1 class="en-title">Ashour POS</h1>
+      <span class="subtitle">نقطة بيع ذكية</span>
+    </div>
+  </div>
+</div>
 
 <!-- شاشة PIN -->
 <div id="pinOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
@@ -972,7 +1064,7 @@ tailwind.config = {
   import { getFirestore, doc, setDoc, getDoc, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
-    apiKey: "AIzaSyDrP28cCIUEijbGkUqkz-OtUFrLlvLsmeY" ,
+    apiKey: "AIzaSyDrP28cCIUEijbGkUqkz-OtUFrLlvLsmeY",
     authDomain: "ashour-pos.firebaseapp.com",
     projectId: "ashour-pos",
     storageBucket: "ashour-pos.appspot.com",
@@ -1003,5 +1095,20 @@ tailwind.config = {
 
 <script src="db.js"></script>
 <script src="app.js"></script>
+
+<!-- كود تلاشي شاشة البداية -->
+<script>
+  window.addEventListener('load', () => {
+    const splash = document.getElementById('ashour-intro');
+    if (splash) {
+      setTimeout(() => {
+        splash.style.opacity = '0';
+        splash.style.transform = 'scale(1.05)';
+        setTimeout(() => splash.remove(), 600);
+      }, 2400); // 2.4 ثانية
+    }
+  });
+</script>
+
 </body>
 </html>
