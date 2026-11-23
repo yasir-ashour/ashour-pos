@@ -4,8 +4,8 @@
   "description": "نظام ذكي لإدارة المبيعات والمخزون ونقاط البيع",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#F4F7F9",
-  "theme_color": "#0F5C4E",
+  "background_color": "#041226",
+  "theme_color": "#0a2e5c",
   "dir": "rtl",
   "lang": "ar",
   "orientation": "any",
@@ -23,7 +23,7 @@
       "purpose": "any"
     },
     {
-      "src": "./icon-512.png",
+      "src": "./maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
