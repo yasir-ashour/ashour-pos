@@ -1,7 +1,5 @@
 /* ==========================================================================
    app.js — عقل التطبيق الكامل (مركز عاشور)
-   الجزء الأول: الأدوات، الحالة، التخزين، PIN، التنقل، الأسعار الخاصة، الكاشير،
-                 الباركود، البيع السريع
    ========================================================================== */
 
 const CURRENCY = 'ل.س.ج';
@@ -45,7 +43,6 @@ function nowStr() {
   return new Date().toLocaleString('ar-SY');
 }
 
-// Debounce
 function debounce(fn, ms = 250) {
   let t = null;
   return function(...args) {
@@ -57,7 +54,6 @@ function debounce(fn, ms = 250) {
 const warn = (title, text, icon = 'warning') => Swal.fire({ icon, title, text, confirmButtonColor: '#0F5C4E' });
 const toast = (title, icon = 'success') => Swal.fire({ toast: true, position: 'top-end', icon, title, showConfirmButton: false, timer: 1600 });
 
-// Debounced wrappers (تعتمد على الـ hoisting لـ function declarations)
 const debouncedRenderPosProducts   = debounce(() => renderPosProducts(), 180);
 const debouncedPopulatePosClients  = debounce(() => populatePosClients(), 180);
 const debouncedRenderInvoicesTable = debounce(() => renderInvoicesTable(), 220);
@@ -65,7 +61,6 @@ const debouncedRenderProductsTable = debounce(() => renderProductsTable(), 220);
 const debouncedRenderClientsGrid   = debounce(() => renderClientsGrid(), 220);
 const debouncedRenderCompaniesGrid = debounce(() => renderCompaniesGrid(), 220);
 
-/* ==================== Constants ==================== */
 const DEFAULT_CATEGORIES = ['بسكويت', 'شيبس', 'عصائر ومشروبات', 'سكاكر وعلكة', 'قهوة', 'مواد غذائية'];
 const IMPORTED_PRODUCTS = [
   { name: "اربيكا طبيعي صغير", category: "شيبس" }, { name: "اربيكا طبيعي جامبو", category: "شيبس" },
@@ -80,7 +75,6 @@ const IMPORTED_PRODUCTS = [
   { name: "بسكويت تاندا", category: "بسكويت" }, { name: "قهوه اكسترا هال 100g", category: "قهوة" }
 ];
 
-/* ==================== State ==================== */
 let state = {};
 let isCheckoutSubmitting = false;
 let currentDebtTab = 'take';
@@ -174,7 +168,6 @@ function deepMerge(target, source) {
   return out;
 }
 
-/* ==================== PIN ==================== */
 function generateSalt() {
   try {
     const arr = new Uint8Array(16);
@@ -274,7 +267,6 @@ function logAudit(type, details) {
   AshourDB.addAudit(entry);
 }
 
-/* ==================== Navigation ==================== */
 function switchTab(tabId) {
   document.querySelectorAll('.tab-view').forEach(el => { el.classList.add('hidden'); el.classList.remove('active'); });
   const view = $('view-' + tabId);
@@ -312,7 +304,6 @@ window.addEventListener('popstate', () => {
 });
 history.pushState(null, null, location.href);
 
-/* ==================== Categories ==================== */
 function allCategories() {
   const set = new Set(DEFAULT_CATEGORIES);
   state.products.forEach(p => { if (p.category) set.add(p.category); });
@@ -332,7 +323,6 @@ function selectProdCat(cat) {
 }
 function toggleProdCatDropdown() { $('prodCatDropdownList').classList.toggle('hidden'); }
 
-/* ==================== Balances & Special Prices ==================== */
 function getClientDebt(clientId) {
   const c = state.clients.find(x => x.id === clientId);
   if (!c) return 0;
@@ -372,7 +362,6 @@ async function setClientSpecialPrice(clientId, productId, price) {
   return await saveToStorage();
 }
 
-/* ==================== Custom Prices Modal (النافذة الذكية الجديدة) ==================== */
 function openCustomPricesModal(clientId) {
   const client = state.clients.find(c => c.id === clientId);
   if (!client) { warn('تنبيه', 'الزبون غير موجود', 'error'); return; }
@@ -487,7 +476,6 @@ async function clearAllCustomPrices() {
   toast('سيتم المسح عند الحفظ', 'info');
 }
 
-/* ==================== POS Categories ==================== */
 function initPOSCategories() {
   const cats = ['الكل', ...allCategories()];
   if (!cats.includes(state.selectedPosCategory)) state.selectedPosCategory = 'الكل';
@@ -510,7 +498,6 @@ function setPosCat(cat) {
   renderPosProducts();
 }
 
-/* ==================== POS Client & Cart ==================== */
 function getSelectedPosClient() {
   const id = $('posClientSelect').value || (state.clients[0] ? state.clients[0].id : 'c1');
   return state.clients.find(c => c.id === id) || state.clients[0] || { id: 'c1', name: 'زبون نقدي مباشر', type: 'retail', customPrices: {} };
@@ -896,7 +883,6 @@ async function checkoutPOS() {
   const paymentType = remaining > 0 ? (paidRecorded > 0 ? 'partial' : 'debt') : 'cash';
   const priceModeLabel = getActivePriceType() === 'wholesale' ? 'جملة' : 'تجزئة';
 
-  // ❗ rollback للعداد إن فشل الحفظ
   const prevCounter = state.invoiceCounter;
   const inv = {
     id: nextInvoiceNumber(),
@@ -915,7 +901,7 @@ async function checkoutPOS() {
   const ok = await saveToStorage();
   if (!ok) {
     state.invoices = previousInvoices;
-    state.invoiceCounter = prevCounter;   // ← إصلاح العداد
+    state.invoiceCounter = prevCounter;
     isCheckoutSubmitting = false;
     if (saveBtn) saveBtn.disabled = false;
     return;
@@ -935,7 +921,6 @@ async function checkoutPOS() {
   setTimeout(() => { isCheckoutSubmitting = false; if (saveBtn) saveBtn.disabled = false; }, 500);
 }
 
-/* ==================== Barcode Scanner ==================== */
 let html5QrCode = null;
 let currentScanTarget = 'quickEntryInput';
 
@@ -983,7 +968,6 @@ async function closeBarcodeScanner() {
   modal.style.display = 'none';
 }
 
-/* ==================== Direct Sale ==================== */
 function openDirectSaleModal() {
   $('dsName').value = '';
   $('dsQty').value = '1';
@@ -1031,7 +1015,6 @@ async function saveDirectSale() {
   toast(`تم تسجيل ${qty} × ${name}`);
 }
 
-/* ==================== Products & Quick Product ==================== */
 function generateUniqueSku() {
   const existing = new Set(state.products.map(p => String(p.sku || '').trim()));
   let num = Math.max(200, 101 + state.products.length);
@@ -1173,7 +1156,6 @@ function saveQuickProduct() {
   toast(`تمت إضافة ${qty} × ${name}`);
 }
 
-/* ==================== Clients & Ledger ==================== */
 function openClientModal(clientId = null) {
   $('clientEditId').value = clientId || '';
   if (clientId) {
@@ -1362,7 +1344,6 @@ function switchLedgerSubTab(sub) {
   if (isRet && state.currentLedgerClientId) renderClientReturnsTab(state.currentLedgerClientId);
 }
 
-/* ✅ إصلاح حرج: استخدام returnKey الموحّد */
 function getClientReturnableSummary(clientId) {
   const map = new Map();
   state.invoices.filter(i => i.clientId === clientId && i.status === 'active').forEach(inv => {
@@ -1379,7 +1360,6 @@ function getClientReturnableSummary(clientId) {
       map.get(ret.returnKey).returnedQty = roundMoney(map.get(ret.returnKey).returnedQty + toNum(ret.qty));
       return;
     }
-    // Fallback للمرتجعات القديمة (قبل التحديث) — مطابقة بالاسم والسعر
     for (const item of map.values()) {
       if (normalizeArabic(item.name) === normalizeArabic(ret.productName) && toNum(item.price) === toNum(ret.unitPrice)) {
         item.returnedQty = roundMoney(item.returnedQty + toNum(ret.qty));
@@ -1390,6 +1370,7 @@ function getClientReturnableSummary(clientId) {
   return [...map.values()].map(x => ({ ...x, remainingQty: Math.max(0, roundMoney(x.boughtQty - x.returnedQty)) }));
 }
 
+// ✅ تم إضافة أزرار + و - في المرتجعات
 function renderClientReturnsTab(clientId) {
   const list = getClientReturnableSummary(clientId);
   const container = $('clientReturnableItemsList');
@@ -1401,15 +1382,19 @@ function renderClientReturnsTab(clientId) {
         <div>
           <div class="font-bold text-sm text-slate-800">${esc(item.name)}</div>
           <div class="text-xs text-slate-600 font-semibold mt-1">
-            سعر الفاتورة الفعلي: <span class="text-ashour font-bold">${fmtCur(item.price)}</span> •
-            الكمية المشتراة: <span class="font-bold">${fmt(item.boughtQty)}</span> •
+            سعر الفاتورة: <span class="text-ashour font-bold">${fmtCur(item.price)}</span> •
+            المشتراة: <span class="font-bold">${fmt(item.boughtQty)}</span> •
             المرتجع سابقاً: <span class="font-bold">${fmt(item.returnedQty)}</span> •
-            المتاح للإرجاع: <span class="text-emerald-700 font-bold">${fmt(item.remainingQty)}</span>
+            المتاح: <span class="text-emerald-700 font-bold">${fmt(item.remainingQty)}</span>
           </div>
         </div>
         <div class="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
           <span class="text-xs font-bold text-slate-600">كمية الإرجاع:</span>
-          <input type="number" id="returnQty_${esc(item.key)}" min="1" max="${item.remainingQty}" value="${item.remainingQty > 0 ? 1 : 0}" ${item.remainingQty <= 0 ? 'disabled' : ''} class="w-16 bg-white border border-slate-300 rounded-md p-1.5 text-center text-sm font-bold focus:border-ashour">
+          <div class="flex items-center gap-1 bg-white border border-slate-300 rounded-md p-0.5">
+            <button type="button" onclick="adjustReturnQty('${esc(item.key)}', -1)" ${item.remainingQty <= 0 ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded font-bold transition">−</button>
+            <input type="number" id="returnQty_${esc(item.key)}" min="1" max="${item.remainingQty}" value="${item.remainingQty > 0 ? 1 : 0}" ${item.remainingQty <= 0 ? 'disabled' : ''} class="w-10 text-center border-none focus:outline-none focus:ring-0 text-sm font-bold bg-transparent num-tabular">
+            <button type="button" onclick="adjustReturnQty('${esc(item.key)}', 1)" ${item.remainingQty <= 0 ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded font-bold transition">+</button>
+          </div>
           <button onclick="submitClientReturn('${esc(clientId)}', '${esc(item.name)}', ${item.price}, ${item.cost}, '${esc(item.key)}')" ${item.remainingQty <= 0 ? 'disabled' : ''} class="bg-ashour hover:bg-ashour-dark disabled:opacity-40 text-white px-3 py-1.5 rounded-md text-xs font-bold transition">تأكيد الإرجاع</button>
         </div>
       </div>`).join('');
@@ -1419,6 +1404,18 @@ function renderClientReturnsTab(clientId) {
   $('clientReturnsHistoryList').innerHTML = rets.length
     ? rets.map(r => `<div class="flex justify-between items-center border-b border-slate-200 py-1"><span>${esc(r.date)} — ${fmt(r.qty)} × ${esc(r.productName)} (${fmtCur(r.unitPrice)})</span><span class="text-emerald-700 font-bold">خصم ${fmtCur(r.amount)}</span></div>`).join('')
     : `<div class="text-slate-400 text-sm">لا توجد مرتجعات.</div>`;
+}
+
+// دالة جديدة تحكم أزرار + و -
+function adjustReturnQty(key, delta) {
+  const input = $('returnQty_' + key);
+  if (!input || input.disabled) return;
+  let val = parseInt(input.value, 10) || 1;
+  val += delta;
+  const max = parseInt(input.max, 10) || 1;
+  if (val > max) val = max;
+  if (val < 1) val = 1;
+  input.value = val;
 }
 
 async function submitClientReturn(clientId, productName, unitPrice, unitCost, key) {
@@ -1436,7 +1433,7 @@ async function submitClientReturn(clientId, productName, unitPrice, unitCost, ke
     clientId, clientName: client.name,
     productName, qty, unitPrice,
     unitCost: toNum(unitCost), amount, profitAdjustment,
-    returnKey: key   // ← المفتاح الموحّد
+    returnKey: key
   };
 
   state.returns.push(newReturn);
@@ -1483,7 +1480,6 @@ function deletePayment(payId) {
   });
 }
 
-/* ==================== Companies & Purchases ==================== */
 function getCompanyDebt(companyId) {
   const purchasesRemaining = sumList(state.purchases.filter(p => p.companyId === companyId && p.status === 'active'), p => p.remaining);
   const paymentsMade = sumList(state.companyPayments.filter(p => p.companyId === companyId), p => p.amount);
@@ -1652,7 +1648,6 @@ async function saveCompany() {
   toast('تم الحفظ');
 }
 
-/* ==================== Purchases ==================== */
 function generateSixDigitPurchaseCode() {
   const used = new Set(state.purchases.map(p => String(p.code || p.id || '').replace(/\D/g, '')));
   let code = '';
@@ -1778,7 +1773,7 @@ function renderPurchases() {
       if (p.status === 'cancelled') return false;
       if (filterCompId && p.companyId !== filterCompId) return false;
       if (fromDate || toDate) {
-        if (!p.ts) return false;   // تجاهل صفوف بلا تاريخ عند تصفية التاريخ
+        if (!p.ts) return false;
         const k = dayKey(p.ts || 0);
         if (fromDate && k < fromDate) return false;
         if (toDate && k > toDate) return false;
@@ -1847,7 +1842,6 @@ async function recordCompanyPayment() {
   toast('تم تسجيل الدفعة');
 }
 
-/* ==================== Person Debts ==================== */
 function switchDebtTab(type) {
   currentDebtTab = type === 'give' ? 'give' : 'take';
   const isTake = currentDebtTab === 'take';
@@ -1925,7 +1919,6 @@ function deletePersonDebt(id) {
   });
 }
 
-/* ==================== Invoices & Expenses ==================== */
 function renderInvoicesTable() {
   const query = normalizeArabic(($('invoiceSearchInput')?.value || '').trim());
   const statusFilter = $('invoiceStatusFilter')?.value || 'all';
@@ -2029,7 +2022,6 @@ function viewPastInvoice(id) {
   if (inv) showReceiptModal(inv);
 }
 
-/* ✅ إصلاح حرج: عند إلغاء فاتورة مدفوعة → سجّل استرداد */
 function cancelInvoice(id) {
   const inv = state.invoices.find(i => i.id === id);
   if (!inv || inv.status === 'cancelled') return;
@@ -2115,7 +2107,6 @@ function renderExpensesTable() {
   $('expensesTableBody').innerHTML = list.map(e => `<tr class="hover:bg-slate-50 border-b border-slate-100"><td class="p-3 text-slate-500 whitespace-nowrap">${esc(e.date)}</td><td class="p-3 font-bold text-slate-800">${esc(e.title)}</td><td class="p-3 text-purple-700 font-bold">${fmtCur(e.amount)}</td><td class="p-3 text-slate-600">${esc(e.notes)}</td><td class="p-3 text-center"><button onclick="deleteExpense('${esc(e.id)}')" class="bg-rose-100 text-rose-600 hover:bg-rose-600 hover:text-white px-2.5 py-1 rounded transition text-xs font-bold"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || `<tr><td colspan="5" class="p-6 text-center text-slate-400 text-sm">لا توجد مصاريف</td></tr>`;
 }
 
-/* ==================== Reports & Settings ==================== */
 let lastReport = null;
 function setReportRange(days) {
   const to = new Date(), from = new Date();
@@ -2284,7 +2275,6 @@ function importDataBackup(ev) {
   reader.readAsText(file);
 }
 
-/* ==================== Receipt & Sharing ==================== */
 function normalizePhoneForWA(raw) {
   if (!raw || raw === '-') return null;
   let p = String(raw).replace(/\D/g, '');
@@ -2384,7 +2374,6 @@ async function shareReceiptImage() {
   } catch (_) { saveReceiptAsImage(); }
 }
 
-/* ==================== Modals ==================== */
 function openModal(id) {
   const el = $(id);
   if (!el) return;
@@ -2394,7 +2383,7 @@ function openModal(id) {
 function closeModal(id) {
   const el = $(id);
   if (!el) return;
-  if (id === 'customPricesModal') state.customPricesEditing = null;   // ← تنظيف الحالة
+  if (id === 'customPricesModal') state.customPricesEditing = null;
   el.classList.add('hidden');
   el.style.display = 'none';
 }
@@ -2405,7 +2394,6 @@ document.addEventListener('keydown', e => {
   if (e.key === 'F4') { e.preventDefault(); if (!$('pinOverlay').classList.contains('hidden')) return; if (!$('view-pos').classList.contains('hidden')) checkoutPOS(); }
 });
 
-/* renderAll — يدعم تخطي بعض الأقسام اختيارياً */
 function renderAll(opts = {}) {
   const skip = Array.isArray(opts.skip) ? opts.skip : [];
   const should = n => !skip.includes(n);
@@ -2426,7 +2414,6 @@ function renderAll(opts = {}) {
   if (!$('view-reports').classList.contains('hidden')) renderReports();
 }
 
-/* ==================== Init ==================== */
 window.addEventListener('DOMContentLoaded', async function () {
   await loadFromStorage();
   refreshCategoryWidgets();
