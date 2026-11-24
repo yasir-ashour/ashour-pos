@@ -1,4 +1,4 @@
-// firebase-sync.js — المزامنة السحابية (نسخة نهائية مصححة)
+// firebase-sync.js — المزامنة السحابية
 const FireSync = {
   currentUser: null,
   _isSyncing: false,
@@ -69,9 +69,7 @@ const FireSync = {
       if (!c.customPrices || typeof c.customPrices !== 'object') c.customPrices = {};
     });
 
-    // السلة لا تُمسح عند المزامنة
     merged.cart = Array.isArray(localState.cart) ? localState.cart : [];
-
     merged.lastUpdated = Math.max(
       Number(localState.lastUpdated) || 0,
       Number(cloudData.lastUpdated) || 0,
@@ -84,7 +82,6 @@ const FireSync = {
   init() {
     const auth = window.firebaseAuth;
     if (!auth) {
-      // Firebase SDK لم يُحمّل بعد — أعد المحاولة
       setTimeout(() => this.init(), 500);
       return;
     }
@@ -150,7 +147,7 @@ const FireSync = {
 
   async login() {
     if (!window.firebaseAuth) {
-      if (typeof Swal !== 'undefined') Swal.fire('خطأ', 'النظام لم يجهز بعد. أعد تحميل الصفحة وحاول مرة أخرى.', 'error');
+      if (typeof Swal !== 'undefined') Swal.fire('خطأ', 'النظام لم يجهز بعد. أعد تحميل الصفحة.', 'error');
       return;
     }
     try {
@@ -159,8 +156,8 @@ const FireSync = {
       console.error('Login failed:', error);
       if (typeof Swal !== 'undefined') {
         const msg = error && error.code === 'auth/popup-blocked'
-          ? 'المتصفح منع النافذة المنبثقة. اسمح بالنوافذ المنبثقة ثم أعد المحاولة.'
-          : 'فشل تسجيل الدخول. تأكد من أن النطاق مضاف في Firebase Console.';
+          ? 'المتصفح منع النافذة المنبثقة. اسمح بالنوافذ المنبثقة.'
+          : 'فشل تسجيل الدخول. تأكد من النطاق.';
         Swal.fire('خطأ', msg, 'error');
       }
     }
@@ -170,23 +167,15 @@ const FireSync = {
     if (!window.firebaseAuth) return;
     try {
       const confirmed = await Swal.fire({
-        title: 'تسجيل خروج؟',
-        text: 'بياناتك ستبقى على هذا الجهاز، لكن المزامنة السحابية ستتوقف.',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#64748b',
-        confirmButtonText: 'نعم، خروج',
-        cancelButtonText: 'إلغاء'
+        title: 'تسجيل خروج؟', text: 'بياناتك ستبقى محلياً.', icon: 'question',
+        showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#64748b',
+        confirmButtonText: 'نعم، خروج', cancelButtonText: 'إلغاء'
       });
       if (confirmed.isConfirmed) {
         await window.firebaseSignOut(window.firebaseAuth);
-        if (typeof toast === 'function') toast('تم تسجيل الخروج بنجاح', 'success');
+        if (typeof toast === 'function') toast('تم تسجيل الخروج', 'success');
       }
-    } catch (e) {
-      console.error('Logout error:', e);
-      if (typeof Swal !== 'undefined') Swal.fire('خطأ', 'تعذر تسجيل الخروج', 'error');
-    }
+    } catch (e) {}
   },
 
   async saveToCloud(data) {
@@ -197,10 +186,14 @@ const FireSync = {
     }
     try {
       const stamp = Date.now();
-      const payload = {
-        ...JSON.parse(JSON.stringify(data)),
-        lastUpdated: stamp
-      };
+      const payload = { ...JSON.parse(JSON.stringify(data)), lastUpdated: stamp };
+      
+      // 🔒 حماية أمنية: منع رفع بيانات PIN للسحابة
+      delete payload.pinHash;
+      delete payload.pinSalt;
+      delete payload.pinAttempts;
+      delete payload.pinLockUntil;
+
       if (typeof state === 'object' && state) state.lastUpdated = stamp;
       const userDoc = window.firebaseDoc(window.firebaseDB, 'users', this.currentUser.uid, 'store', 'data');
       await window.firebaseSetDoc(userDoc, payload);
@@ -254,19 +247,11 @@ const FireSync = {
   }
 };
 
-// ✅ الإصلاح الحاسم: جعل FireSync متاحاً عالمياً
 window.FireSync = FireSync;
 
-// دالة زر Google (تعمل دائماً حتى لو FireSync لم يُهيأ بعد)
 window.handleGoogleLoginClick = function () {
-  if (!window.FireSync) {
-    console.error('FireSync غير محمّل — قد يكون الملف firebase-sync.js لم يُحمّل بعد');
-    if (typeof Swal !== 'undefined') Swal.fire('خطأ', 'النظام قيد التحميل. أعد المحاولة بعد ثانية.', 'warning');
-    return;
-  }
-  // إذا لم يكتمل init بعد، نفّذه الآن
+  if (!window.FireSync) return;
   if (!FireSync._initialized) FireSync.init();
-
   if (FireSync.currentUser) FireSync.logout();
   else FireSync.login();
 };
