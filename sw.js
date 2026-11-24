@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ashour-pos-v7'; // تم رفع الإصدار
+const CACHE_NAME = 'ashour-pos-v8'; // تم رفع الإصدار
 const CORE_ASSETS = [
   './',
   './index.html',
