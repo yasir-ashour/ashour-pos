@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ashour-pos-v6';
+const CACHE_NAME = 'ashour-pos-v7'; // تم رفع الإصدار
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -60,7 +60,6 @@ self.addEventListener('fetch', (event) => {
   const isSameOrigin = urlStr.startsWith(self.location.origin);
 
   if (isSameOrigin) {
-    // Network First للملفات المحلية لضمان وصول التحديثات فوراً
     event.respondWith(
       fetch(req)
         .then((networkRes) => {
@@ -77,7 +76,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache First للمكتبات الخارجية مع تحديث خلفي
   event.respondWith(
     caches.match(req).then((cached) => {
       const fetchPromise = fetch(req)
