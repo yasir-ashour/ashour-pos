@@ -1,10 +1,14 @@
-const CACHE_NAME = 'ashour-pos-v5';
-const ASSETS = [
+const CACHE_NAME = 'ashour-pos-v6';
+const CORE_ASSETS = [
   './',
   './index.html',
   './db.js',
   './app.js',
-  './manifest.json',
+  './firebase-sync.js',
+  './manifest.json'
+];
+const OPTIONAL_ASSETS = [
+  './icon-192.png',
   './icon.svg',
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/sweetalert2@11',
@@ -12,29 +16,80 @@ const ASSETS = [
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
 ];
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(async (cache) => {
+      await cache.addAll(CORE_ASSETS);
+      await Promise.allSettled(
+        OPTIONAL_ASSETS.map(async (url) => {
+          try {
+            const resp = await fetch(url, { mode: 'no-cors' });
+            if (resp && (resp.ok || resp.type === 'opaque')) {
+              await cache.put(url, resp);
+            }
+          } catch (_) {}
+        })
+      );
+    })
+  );
   self.skipWaiting();
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.map((key) => { if (key !== CACHE_NAME) return caches.delete(key); }))));
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.map((key) => (key !== CACHE_NAME ? caches.delete(key) : Promise.resolve())))
+    )
+  );
   self.clients.claim();
 });
 
-self.addEventListener('fetch', (e) => {
-  if (e.request.url.includes('firebase') || e.request.url.includes('supabase')) return;
-  e.respondWith(
-    caches.match(e.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(e.request).then((response) => {
-        if (!response || response.status !== 200 || response.type !== 'basic') return response;
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(e.request, responseClone));
-        return response;
-      }).catch(() => {
-        if (e.request.mode === 'navigate') return caches.match('./index.html');
-      });
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const urlStr = req.url || '';
+  if (
+    urlStr.includes('firebase') ||
+    urlStr.includes('googleapis.com') ||
+    urlStr.includes('gstatic.com') ||
+    urlStr.includes('supabase')
+  ) {
+    return;
+  }
+
+  const isSameOrigin = urlStr.startsWith(self.location.origin);
+
+  if (isSameOrigin) {
+    // Network First للملفات المحلية لضمان وصول التحديثات فوراً
+    event.respondWith(
+      fetch(req)
+        .then((networkRes) => {
+          if (networkRes && networkRes.status === 200) {
+            const copy = networkRes.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+          }
+          return networkRes;
+        })
+        .catch(() =>
+          caches.match(req).then((cached) => cached || (req.mode === 'navigate' ? caches.match('./index.html') : undefined))
+        )
+    );
+    return;
+  }
+
+  // Cache First للمكتبات الخارجية مع تحديث خلفي
+  event.respondWith(
+    caches.match(req).then((cached) => {
+      const fetchPromise = fetch(req)
+        .then((networkRes) => {
+          if (networkRes && (networkRes.status === 200 || networkRes.type === 'opaque')) {
+            const copy = networkRes.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+          }
+          return networkRes;
+        })
+        .catch(() => cached);
+      return cached || fetchPromise;
     })
   );
 });
