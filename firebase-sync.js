@@ -68,7 +68,6 @@ const FireSync = {
       if (!c.customPrices || typeof c.customPrices !== 'object') c.customPrices = {};
     });
 
-    // السلة لا تُمسح عند المزامنة (تبقى من الجهاز الحالي)
     merged.cart = Array.isArray(localState.cart) ? localState.cart : [];
 
     merged.lastUpdated = Math.max(
@@ -87,14 +86,11 @@ const FireSync = {
     window.firebaseOnAuthStateChanged(auth, async (user) => {
       this.currentUser = user;
       this._updateLoginUI(user);
-
-      if (user) {
-        await this.loadFromCloud(user.uid);
-      }
+      if (user) await this.loadFromCloud(user.uid);
     });
 
-    // مزامنة عند عودة الاتصال
     window.addEventListener('online', () => {
+      this._updateLoginUI(this.currentUser);
       if (this.currentUser && typeof state !== 'undefined') {
         this.saveToCloud(state).then(ok => {
           if (ok && typeof toast === 'function') toast('تمت المزامنة بعد عودة الاتصال', 'success');
@@ -102,7 +98,6 @@ const FireSync = {
       }
     });
 
-    // مؤشر الحالة
     window.addEventListener('offline', () => {
       this._updateLoginUI(this.currentUser);
     });
@@ -110,40 +105,30 @@ const FireSync = {
 
   _updateLoginUI(user) {
     const isOnline = navigator.onLine;
-    const btnDesktop = document.getElementById('googleLoginBtn');
-    const btnMobile = document.getElementById('googleLoginBtnMobile');
-    const textDesktop = document.getElementById('googleLoginBtnText');
-    const textMobile = document.getElementById('googleLoginBtnMobileText');
-    const statusEl = document.getElementById('syncStatus');
+    const btn = document.getElementById('settingsGoogleBtn');
+    const text = document.getElementById('settingsGoogleBtnText');
+    const statusEl = document.getElementById('settingsSyncStatus');
+    const emailEl = document.getElementById('settingsSyncEmail');
+    const headerStatus = document.getElementById('syncStatus');
 
     if (user) {
-      if (textDesktop) textDesktop.textContent = 'خروج';
-      if (btnDesktop) {
-        btnDesktop.classList.remove('bg-white', 'text-blue-700', 'hover:bg-blue-50');
-        btnDesktop.classList.add('bg-emerald-600', 'text-white', 'hover:bg-emerald-700');
+      if (text) text.textContent = 'تسجيل الخروج';
+      if (btn) {
+        btn.classList.remove('bg-white', 'text-blue-700', 'border-blue-300', 'hover:bg-blue-50');
+        btn.classList.add('bg-rose-50', 'text-rose-700', 'border-rose-300', 'hover:bg-rose-100');
       }
-      if (textMobile) textMobile.textContent = 'خروج';
-      if (btnMobile) {
-        btnMobile.classList.remove('bg-white', 'text-blue-700', 'hover:bg-blue-50');
-        btnMobile.classList.add('bg-emerald-600', 'text-white', 'hover:bg-emerald-700');
-      }
-      if (statusEl) {
-        statusEl.innerHTML = isOnline
-          ? '<i class="fa-solid fa-cloud"></i> متزامن — ' + (user.email || '').split('@')[0]
-          : '<i class="fa-solid fa-cloud-slash text-amber-300"></i> غير متصل (سيُزامَن لاحقاً)';
-      }
+      if (statusEl) statusEl.innerHTML = isOnline ? `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-cloud"></i> متزامن</span>` : `<span class="text-amber-600 font-bold"><i class="fa-solid fa-cloud-slash"></i> غير متصل</span>`;
+      if (emailEl) emailEl.textContent = user.email || '';
+      if (headerStatus) headerStatus.innerHTML = isOnline ? `<i class="fa-solid fa-cloud text-emerald-300"></i> متزامن` : `<i class="fa-solid fa-cloud-slash text-amber-300"></i> غير متصل`;
     } else {
-      if (textDesktop) textDesktop.textContent = 'ربط الحساب';
-      if (btnDesktop) {
-        btnDesktop.classList.add('bg-white', 'text-blue-700', 'hover:bg-blue-50');
-        btnDesktop.classList.remove('bg-emerald-600', 'text-white', 'hover:bg-emerald-700');
+      if (text) text.textContent = 'تسجيل الدخول بـ Google';
+      if (btn) {
+        btn.classList.add('bg-white', 'text-blue-700', 'border-blue-300', 'hover:bg-blue-50');
+        btn.classList.remove('bg-rose-50', 'text-rose-700', 'border-rose-300', 'hover:bg-rose-100');
       }
-      if (textMobile) textMobile.textContent = 'دخول';
-      if (btnMobile) {
-        btnMobile.classList.add('bg-white', 'text-blue-700', 'hover:bg-blue-50');
-        btnMobile.classList.remove('bg-emerald-600', 'text-white', 'hover:bg-emerald-700');
-      }
-      if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-cloud-slash"></i> غير متزامن';
+      if (statusEl) statusEl.innerHTML = `<span class="text-slate-500"><i class="fa-solid fa-cloud-slash"></i> غير متزامن</span>`;
+      if (emailEl) emailEl.textContent = 'سجّل الدخول لمزامنة بياناتك على كل الأجهزة';
+      if (headerStatus) headerStatus.innerHTML = `<i class="fa-solid fa-cloud-slash"></i> غير متزامن`;
     }
   },
 
@@ -159,24 +144,31 @@ const FireSync = {
 
   async logout() {
     if (!window.firebaseAuth) return;
-    const confirmed = typeof Swal !== 'undefined'
-      ? (await Swal.fire({
-          title: 'تسجيل خروج؟',
-          text: 'بياناتك ستبقى على الجهاز، لكن المزامنة السحابية ستتوقف.',
-          icon: 'question',
-          showCancelButton: true,
-          confirmButtonColor: '#d33',
-          confirmButtonText: 'نعم، خروج',
-          cancelButtonText: 'إلغاء'
-        })).isConfirmed
-      : confirm('تسجيل خروج؟');
-    if (confirmed) await window.firebaseSignOut(window.firebaseAuth);
+    try {
+      const confirmed = await Swal.fire({
+        title: 'تسجيل خروج؟',
+        text: 'بياناتك ستبقى على هذا الجهاز، لكن المزامنة السحابية ستتوقف.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'نعم، خروج',
+        cancelButtonText: 'إلغاء'
+      });
+      if (confirmed.isConfirmed) {
+        await window.firebaseSignOut(window.firebaseAuth);
+        if (typeof toast === 'function') toast('تم تسجيل الخروج بنجاح', 'success');
+      }
+    } catch(e) {
+      console.error('Logout error:', e);
+      Swal.fire('خطأ', 'تعذر تسجيل الخروج', 'error');
+    }
   },
 
   async saveToCloud(data) {
     if (!this.currentUser || !window.firebaseDB) return false;
     if (this._isSyncing) {
-      this._pendingSave = data; // خزّن آخر نسخة
+      this._pendingSave = data;
       return false;
     }
     try {
@@ -189,7 +181,6 @@ const FireSync = {
       const userDoc = window.firebaseDoc(window.firebaseDB, 'users', this.currentUser.uid, 'store', 'data');
       await window.firebaseSetDoc(userDoc, payload);
 
-      // نفّذ أي حفظ معلّق أثناء الانتظار
       if (this._pendingSave) {
         const pending = this._pendingSave;
         this._pendingSave = null;
@@ -215,7 +206,6 @@ const FireSync = {
         const cloudLastUpdate = Number(cloudData.lastUpdated) || 0;
 
         if (cloudLastUpdate > localLastUpdate + 1000) {
-          // السحابة أحدث
           state = this._reconcileState(state, cloudData);
           if (window.AshourDB && typeof AshourDB.save === 'function') await AshourDB.save(state);
           if (typeof refreshCategoryWidgets === 'function') refreshCategoryWidgets();
@@ -223,14 +213,11 @@ const FireSync = {
           if (typeof renderAll === 'function') renderAll();
           if (typeof toast === 'function') toast('تم تحديث البيانات من السحابة', 'info');
         } else if (localLastUpdate > cloudLastUpdate + 1000) {
-          // المحلي أحدث — ارفعه
           this._isSyncing = false;
           await this.saveToCloud(state);
           if (typeof toast === 'function') toast('تمت مزامنة تعديلاتك المحلية', 'success');
         }
-        // إذا متساويان تقريباً (أقل من ثانية): لا شيء
       } else {
-        // لا يوجد مستند — ارفع المحلي
         this._isSyncing = false;
         await this.saveToCloud(state);
       }
@@ -243,7 +230,6 @@ const FireSync = {
   }
 };
 
-// دالة مساعدة لزر Google في الهيدر
 window.handleGoogleLoginClick = function () {
   if (!window.FireSync) return;
   if (FireSync.currentUser) FireSync.logout();
