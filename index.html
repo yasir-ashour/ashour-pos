@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="color-scheme" content="light only"> <!-- ✅ إصلاح شاشات كروم السوداء -->
-<title>مركز عاشور - نظام الإدارة المتكامل</title>
+<meta name="color-scheme" content="light only">
+<title>نظام الفوتير - مركز عاشور</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0F5C4E">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -34,7 +34,6 @@ tailwind.config = {
 </script>
 <style>
   html { scroll-behavior: smooth; }
-  /* إجبار الوضع الفاتح للعناصر */
   :root, body, input, select, textarea, button { color-scheme: light !important; }
   body {
     font-family: 'IBM Plex Sans Arabic', 'Inter', sans-serif;
@@ -233,6 +232,7 @@ tailwind.config = {
 
       <!-- أزرار الموبايل -->
       <div class="flex md:hidden items-center gap-1 shrink-0">
+        <button type="button" onclick="toggleCurrency()" id="currencyToggleBtn" class="bg-amber-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-sm" title="تبديل العملة">SYP</button>
         <button type="button" onclick="exportDataBackup()" class="bg-emerald-500 px-2.5 py-1.5 rounded-lg text-xs font-bold" title="نسخة احتياطية"><i class="fa-solid fa-cloud-arrow-down"></i></button>
         <button type="button" onclick="lockApp()" class="bg-rose-500/90 px-2.5 py-1.5 rounded-lg text-xs font-bold" title="قفل"><i class="fa-solid fa-lock"></i></button>
       </div>
@@ -252,6 +252,7 @@ tailwind.config = {
     </nav>
 
     <div class="hidden md:flex items-center gap-2">
+      <button type="button" onclick="toggleCurrency()" class="bg-amber-500 hover:bg-amber-600 px-3 py-1.5 rounded-lg text-xs font-bold transition" id="currencyToggleBtnDesktop">SYP</button>
       <button onclick="exportDataBackup()" class="bg-emerald-500 hover:bg-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold transition"><i class="fa-solid fa-cloud-arrow-down"></i> نسخة احتياطية</button>
       <button onclick="lockApp()" class="bg-rose-500/90 hover:bg-rose-600 px-3 py-1.5 rounded-lg text-xs font-bold transition"><i class="fa-solid fa-lock"></i> قفل</button>
     </div>
@@ -281,6 +282,14 @@ tailwind.config = {
           <button onclick="openDirectSaleModal()" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap"><i class="fa-solid fa-bag-shopping"></i> بيع سريع</button>
           <button onclick="openQuickProductModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap"><i class="fa-solid fa-bolt"></i> منتج سريع</button>
         </div>
+        
+        <!-- أزرار البسكويت السريعة -->
+        <div class="flex gap-1.5 overflow-x-auto py-1">
+          <button onclick="addQuickCookie(200)" class="bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap hover:bg-amber-200 transition"><i class="fa-solid fa-cookie"></i> بسكويت 200</button>
+          <button onclick="addQuickCookie(300)" class="bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap hover:bg-amber-200 transition"><i class="fa-solid fa-cookie"></i> بسكويت 300</button>
+          <button onclick="addQuickCookie(500)" class="bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap hover:bg-amber-200 transition"><i class="fa-solid fa-cookie"></i> بسكويت 500</button>
+        </div>
+
         <div id="posCategoryFilter" class="flex gap-2 overflow-x-auto pb-1 lg:hidden w-full" style="scrollbar-width: none;"></div>
       </div>
       <div id="posProductsGrid" class="w-full"></div>
@@ -385,13 +394,23 @@ tailwind.config = {
         <div><h2 class="text-xl font-bold text-ashour">سجل المبيعات والعمليات</h2></div>
         <div class="flex flex-wrap gap-2 w-full md:w-auto">
           <input type="text" id="invoiceSearchInput" oninput="debouncedRenderInvoicesTable()" placeholder="ابحث برقم العملية أو الزبون..." class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold w-full sm:w-56">
-          <select id="invoiceStatusFilter" onchange="renderInvoicesTable()" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold">
-            <option value="all">جميع الحالات</option>
-            <option value="cash">نقدي / مدفوع</option>
-            <option value="partial">جزئي</option>
-            <option value="debt">آجل / دين</option>
-            <option value="cancelled">ملغاة</option>
-          </select>
+          
+          <!-- قائمة مخصصة لتفادي الشكل الأسود -->
+          <div class="relative min-w-[160px] w-full sm:w-auto">
+            <button type="button" onclick="document.getElementById('invoiceStatusDropdownList').classList.toggle('hidden')" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold text-right flex justify-between items-center shadow-sm">
+              <span id="selectedInvoiceStatusText">جميع الحالات</span>
+              <i class="fa-solid fa-chevron-down text-slate-400 text-[10px]"></i>
+            </button>
+            <div id="invoiceStatusDropdownList" class="hidden absolute top-full right-0 left-0 mt-1 bg-white border border-slate-300 rounded-xl shadow-xl z-30 max-h-48 overflow-y-auto divide-y divide-slate-100">
+              <div onclick="selectInvoiceStatus('all', 'جميع الحالات')" class="p-2.5 hover:bg-emerald-50 cursor-pointer text-sm font-bold text-slate-800">جميع الحالات</div>
+              <div onclick="selectInvoiceStatus('cash', 'نقدي / مدفوع')" class="p-2.5 hover:bg-emerald-50 cursor-pointer text-sm font-bold text-slate-800">نقدي / مدفوع</div>
+              <div onclick="selectInvoiceStatus('partial', 'جزئي')" class="p-2.5 hover:bg-emerald-50 cursor-pointer text-sm font-bold text-slate-800">جزئي</div>
+              <div onclick="selectInvoiceStatus('debt', 'آجل / دين')" class="p-2.5 hover:bg-emerald-50 cursor-pointer text-sm font-bold text-slate-800">آجل / دين</div>
+              <div onclick="selectInvoiceStatus('cancelled', 'ملغاة')" class="p-2.5 hover:bg-emerald-50 cursor-pointer text-sm font-bold text-slate-800">ملغاة</div>
+            </div>
+            <input type="hidden" id="invoiceStatusFilter" value="all" onchange="renderInvoicesTable()">
+          </div>
+
           <input type="date" id="invoiceFromDate" onchange="renderInvoicesTable()">
           <input type="date" id="invoiceToDate" onchange="renderInvoicesTable()">
         </div>
@@ -675,7 +694,6 @@ tailwind.config = {
     <div class="bg-white p-4 rounded-2xl border shadow-sm space-y-5">
       <h2 class="text-xl font-bold text-ashour border-b pb-2">الإعدادات والأمان</h2>
 
-      <!-- قسم المزامنة السحابية -->
       <div class="space-y-2 pb-4 border-b border-slate-100">
         <h3 class="font-bold text-sm text-slate-800"><i class="fa-solid fa-cloud text-blue-500"></i> المزامنة السحابية (Google)</h3>
         <div class="bg-slate-50 border rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -729,6 +747,13 @@ tailwind.config = {
         </div>
         <button onclick="testStorageCapacity()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm px-4 py-2 rounded-xl mt-2"><i class="fa-solid fa-gauge-high"></i> اختبار الذاكرة</button>
       </div>
+
+      <hr class="border-slate-100 mt-4">
+      <div class="space-y-2 mt-4">
+        <h3 class="font-bold text-sm text-rose-600"><i class="fa-solid fa-triangle-exclamation"></i> منطقة الخطر (تصفير النظام)</h3>
+        <button onclick="factoryReset()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm px-4 py-2 rounded-xl"><i class="fa-solid fa-trash-can"></i> تصفير النظام بالكامل (مسح كل شيء للبدء بالعمل)</button>
+      </div>
+
     </div>
   </div>
 
@@ -736,7 +761,6 @@ tailwind.config = {
 
 <!-- ================= النوافذ المنبثقة ================= -->
 
-<!-- نافذة الأسعار الخاصة -->
 <div id="customPricesModal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
   <div class="bg-white rounded-2xl max-w-lg w-full shadow-xl modal-anim flex flex-col max-h-[90vh]">
     <div class="p-4 border-b border-purple-100 bg-gradient-to-l from-purple-50 to-white flex items-center justify-between rounded-t-2xl">
@@ -771,7 +795,6 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- قارئ الباركود -->
 <div id="barcodeScannerModal" onclick="if(event.target===this)closeBarcodeScanner()" class="fixed inset-0 bg-black/80 z-[60] hidden items-center justify-center p-4">
   <div class="bg-white rounded-2xl max-w-sm w-full p-4 shadow-2xl space-y-4 modal-anim">
     <div class="flex justify-between items-center">
@@ -783,7 +806,6 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- منتج سريع -->
 <div id="quickProductModal" onclick="if(event.target===this)closeModal('quickProductModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
   <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4 modal-anim">
     <h3 class="text-lg font-bold text-indigo-700"><i class="fa-solid fa-bolt"></i> منتج سريع</h3>
@@ -802,7 +824,6 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- بيع سريع -->
 <div id="directSaleModal" onclick="if(event.target===this)closeModal('directSaleModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
   <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4 modal-anim">
     <h3 class="text-lg font-bold text-amber-700"><i class="fa-solid fa-bag-shopping"></i> بيع سريع</h3>
@@ -825,7 +846,6 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- منتج -->
 <div id="productModal" onclick="if(event.target===this)closeModal('productModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
   <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto modal-anim">
     <h3 id="productModalTitle" class="text-lg font-bold text-ashour">إضافة / تعديل منتج</h3>
@@ -862,7 +882,6 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- شركة -->
 <div id="companyModal" onclick="if(event.target===this)closeModal('companyModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
   <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto modal-anim">
     <h3 id="companyModalTitle" class="text-lg font-bold text-ashour">بيانات الشركة</h3>
@@ -881,7 +900,6 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- تعديل منتج شركة -->
 <div id="companyProductModal" onclick="if(event.target===this)closeModal('companyProductModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
   <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4 modal-anim">
     <h3 class="text-lg font-bold text-ashour"><i class="fa-solid fa-pen text-ashour-gold"></i> تعديل منتج الشركة</h3>
@@ -904,7 +922,6 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- مشتريات -->
 <div id="purchaseModal" onclick="if(event.target===this)closeModal('purchaseModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
   <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4 modal-anim">
     <div class="flex justify-between items-center">
@@ -935,7 +952,6 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- ديون الأشخاص -->
 <div id="personDebtModal" onclick="if(event.target===this)closeModal('personDebtModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
   <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4 modal-anim">
     <h3 class="text-lg font-bold text-ashour"><i class="fa-solid fa-hand-holding-dollar"></i> دين شخصي جديد</h3>
@@ -955,7 +971,6 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- تسديد شركة -->
 <div id="companyPaymentModal" onclick="if(event.target===this)closeModal('companyPaymentModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
   <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4 modal-anim">
     <h3 class="text-lg font-bold text-emerald-700"><i class="fa-solid fa-money-bill-transfer"></i> تسديد دفعة للشركة</h3>
@@ -970,7 +985,6 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- مصروف -->
 <div id="expenseModal" onclick="if(event.target===this)closeModal('expenseModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
   <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4 modal-anim">
     <h3 class="text-lg font-bold text-purple-700"><i class="fa-solid fa-wallet"></i> تسجيل مصروف</h3>
@@ -986,7 +1000,6 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- زبون -->
 <div id="clientModal" onclick="if(event.target===this)closeModal('clientModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
   <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4 modal-anim">
     <h3 id="clientModalTitle" class="text-lg font-bold text-ashour">إضافة زبون</h3>
@@ -1008,7 +1021,6 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- الإيصال -->
 <div id="receiptModal" onclick="if(event.target===this)closeModal('receiptModal')" class="fixed inset-0 bg-black/75 z-[90] hidden items-center justify-center p-4 overflow-y-auto">
   <div class="bg-white rounded-2xl max-w-sm w-full p-4 shadow-2xl relative my-8 border-2 border-ashour/20 modal-anim">
     <button onclick="closeModal('receiptModal')" class="absolute left-3 top-3 text-slate-400 hover:text-slate-700 text-2xl font-bold">&times;</button>
@@ -1081,10 +1093,7 @@ tailwind.config = {
   window.firebaseSetDoc = setDoc;
   window.firebaseGetDoc = getDoc;
 
-  enableIndexedDbPersistence(window.firebaseDB).catch((err) => {
-    if (err.code == 'failed-precondition') console.warn("Persistence: multiple tabs open");
-    else if (err.code == 'unimplemented') console.warn("Persistence not supported");
-  });
+  enableIndexedDbPersistence(window.firebaseDB).catch((err) => {});
 </script>
 
 <script src="firebase-sync.js"></script>
