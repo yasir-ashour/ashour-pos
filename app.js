@@ -82,8 +82,8 @@ function defaultState() {
       wholesalePrice: 0
     })),
     clients: [
-      { id: 'c1', name: 'زبون نقدي مباشر', type: 'retail', phone: '-', address: '-', openingDebt: 0 },
-      { id: 'c2', name: 'سوبرماركت البركة (موزع)', type: 'wholesale', phone: '0998877665', address: 'شارع التجارة', openingDebt: 150 }
+      { id: 'c1', name: 'زبون نقدي مباشر', type: 'retail', phone: '-', address: '-', openingDebt: 0, customPrices: {} },
+      { id: 'c2', name: 'سوبرماركت البركة (موزع)', type: 'wholesale', phone: '0998877665', address: 'شارع التجارة', openingDebt: 150, customPrices: {} }
     ],
     invoices: [],
     expenses: [],
@@ -103,22 +103,20 @@ function defaultState() {
     currentLedgerClientId: null,
     currentReceiptInv: null,
     activeCompanyId: null,
-    lastUpdated: 0 // يستخدم للمزامنة السحابية
+    lastUpdated: 0
   };
 }
 
 async function saveToStorage() {
-  // 1. الحفظ المحلي (IndexedDB + localStorage)
   const result = await AshourDB.save(state);
   if (!result.ok) {
     Swal.fire({ icon: 'error', title: 'فشل الحفظ المحلي!', html: `تعذّر حفظ البيانات.<br><small>${esc(result.errors.join(' | '))}</small>`, confirmButtonColor: '#d33' });
     return false;
   }
 
-  // 2. الحفظ السحابي (إذا كان المستخدم مسجلاً للدخول)
-  if (window.FireSync && window.FireSync.currentUser) {
+  if (window.FireSync && window.FireSync.currentUser && typeof window.FireSync.saveToCloud === 'function') {
     state.lastUpdated = Date.now();
-    await window.FireSync.saveToCloud(state);
+    window.FireSync.saveToCloud(state).catch(() => {});
   }
 
   return true;
@@ -139,6 +137,10 @@ async function loadFromStorage() {
 
   ['returns', 'directSales', 'noInvoiceItems', 'companies', 'payments', 'expenses', 'invoices', 'products', 'clients', 'purchases', 'companyPayments', 'personDebts'].forEach(k => {
     if (!Array.isArray(state[k])) state[k] = [];
+  });
+
+  state.clients.forEach(c => {
+    if (!c.customPrices || typeof c.customPrices !== 'object') c.customPrices = {};
   });
 
   if (!state.invoiceCounter) state.invoiceCounter = 1000;
@@ -324,7 +326,7 @@ window.addEventListener('popstate', () => {
 });
 history.pushState(null, null, location.href);
 
-/* ==================== Categories & Balances ==================== */
+/* ==================== Categories, Balances & Special Pricing ==================== */
 function allCategories() {
   const set = new Set(DEFAULT_CATEGORIES);
   state.products.forEach(p => { if (p.category) set.add(p.category); });
@@ -347,12 +349,117 @@ function toggleProdCatDropdown() { $('prodCatDropdownList').classList.toggle('hi
 function getClientDebt(clientId) {
   const c = state.clients.find(x => x.id === clientId);
   if (!c) return 0;
-  return roundMoney(
+  const rawBalance = roundMoney(
     toNum(c.openingDebt) +
     sumList(state.invoices.filter(i => i.clientId === clientId && i.status === 'active'), i => i.remaining) -
     sumList(state.payments.filter(p => p.clientId === clientId), p => p.amount) -
     sumList(state.returns.filter(r => r.clientId === clientId), r => r.amount)
   );
+  return Math.max(0, rawBalance);
+}
+
+function getClientCustomPrice(client, productId) {
+  if (!client || !client.customPrices || typeof client.customPrices !== 'object') return 0;
+  const p = toNum(client.customPrices[productId]);
+  return p > 0 ? roundMoney(p) : 0;
+}
+
+function resolveProductPricing(product, client, overrideMode = null) {
+  if (!product) return { price: 0, label: 'تجزئة', isCustom: false };
+  const customPrice = getClientCustomPrice(client, product.id);
+  if (!overrideMode && customPrice > 0) {
+    return { price: customPrice, label: 'سعر خاص', isCustom: true };
+  }
+  const mode = overrideMode || (client && client.type === 'wholesale' ? 'wholesale' : 'retail');
+  if (mode === 'wholesale') {
+    return { price: toNum(product.wholesalePrice), label: 'جملة', isCustom: false };
+  }
+  return { price: toNum(product.retailPrice), label: 'تجزئة', isCustom: false };
+}
+
+async function setClientSpecialPrice(clientId, productId, price) {
+  const client = state.clients.find(c => c.id === clientId);
+  const prod = state.products.find(p => p.id === productId);
+  if (!client) return false;
+  if (!client.customPrices || typeof client.customPrices !== 'object') client.customPrices = {};
+  const cleanPrice = roundMoney(price);
+  if (cleanPrice > 0) {
+    client.customPrices[productId] = cleanPrice;
+  } else {
+    delete client.customPrices[productId];
+  }
+  logAudit('تسعير خاص لزبون', `${client.name} — ${prod ? prod.name : productId}: ${cleanPrice > 0 ? fmtCur(cleanPrice) : 'إلغاء التخصيص'}`);
+  return await saveToStorage();
+}
+
+async function openClientCustomPricesModal(clientId) {
+  const client = state.clients.find(c => c.id === clientId);
+  if (!client) return;
+  if (!client.customPrices || typeof client.customPrices !== 'object') client.customPrices = {};
+
+  if (!state.products.length) {
+    return warn('لا توجد منتجات', 'أضف منتجات أولاً لتحديد أسعار خاصة لها', 'info');
+  }
+
+  const optionsHtml = state.products
+    .map(p => {
+      const currentCustom = getClientCustomPrice(client, p.id);
+      return `<option value="${esc(p.id)}" data-custom="${currentCustom}">${esc(p.name)} (تجزئة: ${fmt(p.retailPrice)} | جملة: ${fmt(p.wholesalePrice)}${currentCustom ? ` | خاص: ${fmt(currentCustom)}` : ''})</option>`;
+    })
+    .join('');
+
+  const { value } = await Swal.fire({
+    title: `أسعار خاصة: ${esc(client.name)}`,
+    html: `
+      <div class="text-right space-y-3 text-sm font-bold num-tabular">
+        <div>
+          <label class="block mb-1 text-slate-700">اختر المنتج:</label>
+          <select id="swal-cp-prod" class="swal2-select w-full m-0 text-sm">${optionsHtml}</select>
+        </div>
+        <div>
+          <label class="block mb-1 text-slate-700">السعر الخاص لهذا الزبون (اتركه 0 لإلغاء السعر الخاص):</label>
+          <input id="swal-cp-price" type="number" step="any" min="0" class="swal2-input w-full m-0 text-sm" placeholder="مثال: 1500">
+        </div>
+      </div>
+    `,
+    didOpen: () => {
+      const sel = document.getElementById('swal-cp-prod');
+      const inp = document.getElementById('swal-cp-price');
+      const syncInput = () => {
+        const opt = sel.options[sel.selectedIndex];
+        inp.value = opt ? (opt.getAttribute('data-custom') || '') : '';
+      };
+      sel.addEventListener('change', syncInput);
+      syncInput();
+    },
+    showCancelButton: true,
+    confirmButtonColor: '#0F5C4E',
+    confirmButtonText: 'حفظ السعر',
+    cancelButtonText: 'إلغاء',
+    preConfirm: () => {
+      const prodId = document.getElementById('swal-cp-prod').value;
+      const priceVal = toNum(document.getElementById('swal-cp-price').value);
+      if (priceVal < 0) {
+        Swal.showValidationMessage('السعر لا يمكن أن يكون سالباً');
+        return false;
+      }
+      return { prodId, priceVal };
+    }
+  });
+
+  if (!value) return;
+  const ok = await setClientSpecialPrice(client.id, value.prodId, value.priceVal);
+  if (ok) {
+    if (state.currentLedgerClientId === client.id) {
+      renderClientSpecialPrices(client.id);
+    }
+    if (getSelectedPosClient().id === client.id) {
+      renderPosProducts();
+      renderCart();
+    }
+    renderClientsGrid();
+    toast('تم حفظ السعر الخاص للزبون');
+  }
 }
 
 /* ==================== POS, Pricing Mode & Cart ==================== */
@@ -380,7 +487,7 @@ function setPosCat(cat) {
 
 function getSelectedPosClient() {
   const id = $('posClientSelect').value || (state.clients[0] ? state.clients[0].id : 'c1');
-  return state.clients.find(c => c.id === id) || state.clients[0] || { id: 'c1', name: 'زبون نقدي مباشر', type: 'retail' };
+  return state.clients.find(c => c.id === id) || state.clients[0] || { id: 'c1', name: 'زبون نقدي مباشر', type: 'retail', customPrices: {} };
 }
 function getActivePriceType() {
   if (state.posPriceOverride === 'wholesale' || state.posPriceOverride === 'retail') return state.posPriceOverride;
@@ -392,6 +499,7 @@ async function togglePosPriceMode() {
   const current = getActivePriceType();
   const next = current === 'wholesale' ? 'retail' : 'wholesale';
   const nextLabel = next === 'wholesale' ? 'جملة' : 'تجزئة';
+  const client = getSelectedPosClient();
 
   if (state.cart.length > 0) {
     const res = await Swal.fire({
@@ -409,11 +517,13 @@ async function togglePosPriceMode() {
     });
     if (res.isDismissed) return;
     if (res.isConfirmed) {
-      const priceKey = next === 'wholesale' ? 'wholesalePrice' : 'retailPrice';
       state.cart.forEach(item => {
         if (!item.isQuickOnly) {
           const p = state.products.find(x => x.id === item.productId);
-          if (p && toNum(p[priceKey]) > 0) item.customPrice = toNum(p[priceKey]);
+          if (p) {
+            const resolved = resolveProductPricing(p, client, next);
+            if (resolved.price > 0) item.customPrice = resolved.price;
+          }
         }
       });
     }
@@ -427,18 +537,22 @@ async function togglePosPriceMode() {
 }
 
 function updatePosPriceUI() {
+  const client = getSelectedPosClient();
+  const customCount = client && client.customPrices ? Object.values(client.customPrices).filter(v => toNum(v) > 0).length : 0;
   const mode = getActivePriceType();
   const isWholesale = mode === 'wholesale';
   const badge = $('posPriceTypeBadge');
   const invBadge = $('posInvoicePriceBadge');
+
+  const baseLabel = isWholesale ? 'جملة (موزع)' : 'تجزئة (عادي)';
   if (badge) {
-    badge.textContent = isWholesale ? 'جملة (موزع)' : 'تجزئة (عادي)';
+    badge.textContent = !state.posPriceOverride && customCount > 0 ? `${baseLabel} + خاص (${customCount})` : baseLabel;
     badge.className = isWholesale
       ? 'inline-block bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded font-bold mt-1'
       : 'inline-block bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded font-bold mt-1';
   }
   if (invBadge) {
-    invBadge.textContent = isWholesale ? 'تسعيرة: جملة' : 'تسعيرة: تجزئة';
+    invBadge.textContent = `تسعيرة: ${isWholesale ? 'جملة' : 'تجزئة'}${!state.posPriceOverride && customCount > 0 ? ' (أسعار خاصة مفعّلة)' : ''}`;
     invBadge.className = isWholesale
       ? 'text-[11px] px-2 py-0.5 rounded-full font-bold bg-amber-400 text-slate-950'
       : 'text-[11px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/25 text-white border border-white/20';
@@ -450,7 +564,13 @@ function populatePosClients() {
   const list = state.clients.filter(c => !filter || normalizeArabic(c.name).includes(normalizeArabic(filter)) || (c.phone || '').includes(filter));
   const dropdown = $('clientDropdownList');
   if (!dropdown) return;
-  dropdown.innerHTML = list.map(c => `<div onclick="selectClient('${esc(c.id)}', '${esc(c.name)}')" class="p-2.5 hover:bg-emerald-50 cursor-pointer text-xs font-bold flex justify-between items-center num-tabular"><span>${esc(c.name)}</span><span class="text-[11px] text-slate-500">دين: ${fmtCur(getClientDebt(c.id))}</span></div>`).join('');
+  dropdown.innerHTML = list.map(c => {
+    const cCount = c.customPrices ? Object.values(c.customPrices).filter(v => toNum(v) > 0).length : 0;
+    return `<div onclick="selectClient('${esc(c.id)}', '${esc(c.name)}')" class="p-2.5 hover:bg-emerald-50 cursor-pointer text-xs font-bold flex justify-between items-center num-tabular">
+      <span>${esc(c.name)} ${cCount > 0 ? `<span class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded mr-1">${cCount} خاص</span>` : ''}</span>
+      <span class="text-[11px] text-slate-500">دين: ${fmtCur(getClientDebt(c.id))}</span>
+    </div>`;
+  }).join('');
   if (list.length && !$('posClientSelect').value) selectClient(list[0].id, list[0].name);
 }
 function selectClient(id, label) {
@@ -465,14 +585,26 @@ function toggleClientDropdown() {
   populatePosClients();
 }
 function onPosClientChange() {
+  const client = getSelectedPosClient();
+  if (state.cart.length > 0) {
+    state.cart.forEach(item => {
+      if (!item.isQuickOnly) {
+        delete item.customPrice;
+      }
+    });
+  }
   updatePosPriceUI();
   renderPosProducts();
   renderCart();
+  if (client && client.id !== 'c1') {
+    const cCount = client.customPrices ? Object.values(client.customPrices).filter(v => toNum(v) > 0).length : 0;
+    if (cCount > 0) toast(`تم تطبيق ${cCount} سعر خاص لـ ${client.name}`, 'info');
+  }
 }
 
 function renderPosProducts() {
   const search = normalizeArabic(($('posSearch')?.value || '').trim());
-  const priceKey = getActivePriceType() === 'wholesale' ? 'wholesalePrice' : 'retailPrice';
+  const client = getSelectedPosClient();
   const filtered = state.products.filter(p => {
     const okCat = state.selectedPosCategory === 'الكل' || p.category === state.selectedPosCategory;
     return okCat && (!search || normalizeArabic(p.name).includes(search) || normalizeArabic(p.sku).includes(search) || normalizeArabic(p.barcode).includes(search));
@@ -482,14 +614,18 @@ function renderPosProducts() {
     return;
   }
   $('posProductsGrid').innerHTML = filtered.map(p => {
-    const price = toNum(p[priceKey]);
-    return `<div onclick="addToCart('${esc(p.id)}')" class="bg-white border hover:border-ashour cursor-pointer transition flex flex-col justify-between border-slate-200 rounded-xl p-2.5 shadow-sm card-hover relative group">
+    const resolved = resolveProductPricing(p, client, state.posPriceOverride);
+    const price = resolved.price;
+    return `<div onclick="addToCart('${esc(p.id)}')" class="bg-white border ${resolved.isCustom ? 'border-purple-300 ring-1 ring-purple-200' : 'border-slate-200'} hover:border-ashour cursor-pointer transition flex flex-col justify-between rounded-xl p-2.5 shadow-sm card-hover relative group">
       <div>
-        <span class="text-[11px] text-ashour font-bold block bg-ashour/10 px-1.5 py-0.5 rounded w-fit num-tabular">${esc(p.sku || '-')}</span>
+        <div class="flex items-center justify-between gap-1">
+          <span class="text-[11px] text-ashour font-bold bg-ashour/10 px-1.5 py-0.5 rounded w-fit num-tabular">${esc(p.sku || '-')}</span>
+          ${resolved.isCustom ? `<span class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-bold">سعر خاص</span>` : ''}
+        </div>
         <h4 class="font-bold text-sm text-slate-800 line-clamp-2 leading-tight mt-1">${esc(p.name)}</h4>
       </div>
       <div class="mt-2 flex items-end justify-between border-t border-slate-100 pt-1.5 num-tabular">
-        <span class="text-sm ${price > 0 ? 'text-ashour font-bold' : 'text-rose-500 font-bold text-xs'}">${price > 0 ? fmtCur(price) : 'حدد السعر'}</span>
+        <span class="text-sm ${price > 0 ? (resolved.isCustom ? 'text-purple-700 font-bold' : 'text-ashour font-bold') : 'text-rose-500 font-bold text-xs'}">${price > 0 ? fmtCur(price) : 'حدد السعر'}</span>
         <div class="w-6 h-6 bg-ashour/10 text-ashour rounded-md flex items-center justify-center group-hover:bg-ashour group-hover:text-white transition"><i class="fa-solid fa-plus text-xs"></i></div>
       </div>
     </div>`;
@@ -530,8 +666,9 @@ function handleQuickEntry(ev) {
     return;
   }
 
-  const priceKey = getActivePriceType() === 'wholesale' ? 'wholesalePrice' : 'retailPrice';
-  if (!(toNum(product[priceKey]) > 0)) {
+  const client = getSelectedPosClient();
+  const resolved = resolveProductPricing(product, client, state.posPriceOverride);
+  if (!(resolved.price > 0)) {
     Swal.fire({ icon: 'info', title: 'السعر غير محدد', text: `حدّد سعر ${product.name} أولاً.`, confirmButtonColor: '#0F5C4E' })
       .then(() => openProductModal(product.id));
     return;
@@ -550,8 +687,9 @@ function handleQuickEntry(ev) {
 function addToCart(productId) {
   const product = state.products.find(p => p.id === productId);
   if (!product) return;
-  const priceKey = getActivePriceType() === 'wholesale' ? 'wholesalePrice' : 'retailPrice';
-  if (!(toNum(product[priceKey]) > 0)) {
+  const client = getSelectedPosClient();
+  const resolved = resolveProductPricing(product, client, state.posPriceOverride);
+  if (!(resolved.price > 0)) {
     Swal.fire({ icon: 'info', title: 'السعر غير محدد', text: 'حدد السعر أولاً.', confirmButtonColor: '#0F5C4E' })
       .then(() => openProductModal(productId));
     return;
@@ -600,13 +738,23 @@ function clearCart() {
 }
 
 function getCartItemInfo(item, priceKey) {
+  const client = getSelectedPosClient();
   if (item.isQuickOnly) {
-    return { key: item.quickId, productId: item.quickId, name: item.name, unitPrice: toNum(item.price), unitCost: 0, isQuickOnly: true };
+    return { key: item.quickId, productId: item.quickId, name: item.name, unitPrice: toNum(item.price), unitCost: 0, isQuickOnly: true, isCustom: false };
   }
   const p = state.products.find(x => x.id === item.productId);
   if (!p) return null;
-  const activePrice = item.customPrice != null && toNum(item.customPrice) > 0 ? toNum(item.customPrice) : toNum(p[priceKey]);
-  return { key: p.id, productId: p.id, name: p.name, unitPrice: activePrice, unitCost: toNum(p.cost), isQuickOnly: false };
+  const resolved = resolveProductPricing(p, client, state.posPriceOverride);
+  const activePrice = item.customPrice != null && toNum(item.customPrice) > 0 ? toNum(item.customPrice) : resolved.price;
+  return {
+    key: p.id,
+    productId: p.id,
+    name: p.name,
+    unitPrice: activePrice,
+    unitCost: toNum(p.cost),
+    isQuickOnly: false,
+    isCustom: resolved.isCustom && !(item.customPrice != null && toNum(item.customPrice) > 0)
+  };
 }
 
 function cartTotals() {
@@ -636,7 +784,7 @@ function renderCart() {
       if (!info) return '';
       return `<div class="py-2 flex items-center justify-between gap-2 num-tabular">
         <div class="flex-grow min-w-0">
-          <h5 class="font-bold text-xs text-slate-800 truncate">${esc(info.name)}</h5>
+          <h5 class="font-bold text-xs text-slate-800 truncate">${esc(info.name)} ${info.isCustom ? '<span class="text-[10px] bg-purple-100 text-purple-800 px-1 rounded">خاص</span>' : ''}</h5>
           <span class="text-[11px] text-slate-500 font-semibold">${fmt(info.unitPrice)} × ${item.qty}</span>
         </div>
         <div class="flex items-center gap-1">
@@ -752,6 +900,7 @@ async function checkoutPOS() {
       name: info.name,
       qty: toNum(item.qty),
       price: info.unitPrice,
+      cost: info.unitCost,
       total: calcLineTotal(info.unitPrice, item.qty),
       isQuickOnly: info.isQuickOnly
     };
@@ -1104,11 +1253,11 @@ async function saveClient() {
   if (editId) {
     const c = state.clients.find(x => x.id === editId);
     if (!c) return;
-    previous = { ...c };
+    previous = { ...c, customPrices: { ...(c.customPrices || {}) } };
     Object.assign(c, { name, type, phone, address, openingDebt });
     logAudit('تعديل زبون', `${name} (رصيد افتتاحي: ${fmtCur(openingDebt)})`);
   } else {
-    const newClient = { id: 'c_' + Date.now(), name, type, phone, address, openingDebt };
+    const newClient = { id: 'c_' + Date.now(), name, type, phone, address, openingDebt, customPrices: {} };
     state.clients.push(newClient);
     logAudit('إضافة زبون', name);
   }
@@ -1137,10 +1286,14 @@ function renderClientsGrid() {
   $('clientsGrid').innerHTML = list.map(c => {
     const debt = getClientDebt(c.id);
     const invCount = state.invoices.filter(i => i.clientId === c.id && i.status === 'active').length;
+    const customCount = c.customPrices ? Object.values(c.customPrices).filter(v => toNum(v) > 0).length : 0;
     return `<div onclick="openClientDetailPage('${esc(c.id)}')" class="bg-white border border-slate-200 hover:border-ashour rounded-2xl p-4 shadow-sm space-y-3 flex flex-col justify-between card-hover cursor-pointer">
       <div>
-        <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold px-2 py-0.5 rounded ${c.type === 'wholesale' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">${c.type === 'wholesale' ? 'موزع جملة' : 'عميل تجزئة'}</span>
+        <div class="flex items-center justify-between gap-1">
+          <div class="flex items-center gap-1">
+            <span class="text-[11px] font-bold px-2 py-0.5 rounded ${c.type === 'wholesale' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">${c.type === 'wholesale' ? 'موزع جملة' : 'عميل تجزئة'}</span>
+            ${customCount > 0 ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800">${customCount} سعر خاص</span>` : ''}
+          </div>
           <span class="text-xs text-slate-400 font-bold"><i class="fa-solid fa-phone text-[10px]"></i> ${esc(c.phone || '-')}</span>
         </div>
         <h4 class="font-bold text-base text-slate-800 mt-2">${esc(c.name)}</h4>
@@ -1154,6 +1307,43 @@ function renderClientsGrid() {
   }).join('') || `<div class="col-span-full text-center py-10 text-slate-400 text-sm font-bold">لا يوجد زبائن</div>`;
 }
 
+function renderClientSpecialPrices(clientId) {
+  const container = $('clientSpecialPricesList');
+  if (!container) return;
+  const c = state.clients.find(x => x.id === clientId);
+  if (!c || !c.customPrices) {
+    container.innerHTML = `<span class="text-slate-400">لا توجد أسعار خاصة محددة لهذا الزبون.</span>`;
+    return;
+  }
+  const entries = Object.entries(c.customPrices).filter(([_, price]) => toNum(price) > 0);
+  if (!entries.length) {
+    container.innerHTML = `<span class="text-slate-400">لا توجد أسعار خاصة محددة لهذا الزبون (يعتمد على تسعيرة الجملة أو التجزئة).</span>`;
+    return;
+  }
+
+  container.innerHTML = entries.map(([prodId, price]) => {
+    const prod = state.products.find(p => p.id === prodId);
+    const prodName = prod ? prod.name : `منتج #${prodId}`;
+    return `<div class="bg-purple-50 border border-purple-200 text-purple-900 rounded-xl px-3 py-1.5 flex items-center gap-2">
+      <span>${esc(prodName)}: <b class="text-purple-700">${fmtCur(price)}</b></span>
+      <button type="button" onclick="removeClientSpecialPrice('${esc(clientId)}', '${esc(prodId)}')" title="إزالة السعر الخاص" class="text-rose-500 hover:text-rose-700 text-xs"><i class="fa-solid fa-xmark"></i></button>
+    </div>`;
+  }).join('');
+}
+
+async function removeClientSpecialPrice(clientId, prodId) {
+  const ok = await setClientSpecialPrice(clientId, prodId, 0);
+  if (ok) {
+    renderClientSpecialPrices(clientId);
+    if (getSelectedPosClient().id === clientId) {
+      renderPosProducts();
+      renderCart();
+    }
+    renderClientsGrid();
+    toast('تمت إزالة السعر الخاص');
+  }
+}
+
 function openClientDetailPage(clientId) {
   state.currentLedgerClientId = clientId;
   const c = state.clients.find(x => x.id === clientId);
@@ -1164,6 +1354,7 @@ function openClientDetailPage(clientId) {
   $('ledgerClientBadge').className = `text-xs font-bold px-2 py-0.5 rounded-full ${c.type === 'wholesale' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`;
 
   switchTab('client-detail');
+  renderClientSpecialPrices(clientId);
   renderLedgerSummary(clientId);
   switchLedgerSubTab('statement');
 }
@@ -1226,7 +1417,9 @@ function getClientReturnableSummary(clientId) {
   const map = new Map();
   state.invoices.filter(i => i.clientId === clientId && i.status === 'active').forEach(inv => inv.items.forEach(it => {
     const key = (it.productId || normalizeArabic(it.name)) + '||' + toNum(it.price);
-    if (!map.has(key)) map.set(key, { key, productId: it.productId, name: it.name, price: toNum(it.price), boughtQty: 0, returnedQty: 0 });
+    const liveProd = state.products.find(p => p.id === it.productId);
+    const unitCost = it.cost != null ? toNum(it.cost) : (liveProd ? toNum(liveProd.cost) : 0);
+    if (!map.has(key)) map.set(key, { key, productId: it.productId, name: it.name, price: toNum(it.price), cost: unitCost, boughtQty: 0, returnedQty: 0 });
     map.get(key).boughtQty = roundMoney(map.get(key).boughtQty + toNum(it.qty));
   }));
   state.returns.filter(r => r.clientId === clientId).forEach(ret => {
@@ -1256,7 +1449,7 @@ function renderClientReturnsTab(clientId) {
         <div class="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
           <span class="text-xs font-bold text-slate-600">كمية الإرجاع:</span>
           <input type="number" id="returnQty_${esc(item.key)}" min="1" max="${item.remainingQty}" value="${item.remainingQty > 0 ? 1 : 0}" ${item.remainingQty <= 0 ? 'disabled' : ''} class="w-16 bg-white border border-slate-300 rounded-md p-1.5 text-center text-sm font-bold focus:border-ashour">
-          <button onclick="submitClientReturn('${esc(clientId)}', '${esc(item.name)}', ${item.price}, '${esc(item.key)}')" ${item.remainingQty <= 0 ? 'disabled' : ''} class="bg-ashour hover:bg-ashour-dark disabled:opacity-40 text-white px-3 py-1.5 rounded-md text-xs font-bold transition">تأكيد الإرجاع</button>
+          <button onclick="submitClientReturn('${esc(clientId)}', '${esc(item.name)}', ${item.price}, ${item.cost}, '${esc(item.key)}')" ${item.remainingQty <= 0 ? 'disabled' : ''} class="bg-ashour hover:bg-ashour-dark disabled:opacity-40 text-white px-3 py-1.5 rounded-md text-xs font-bold transition">تأكيد الإرجاع</button>
         </div>
       </div>`).join('');
   }
@@ -1267,7 +1460,7 @@ function renderClientReturnsTab(clientId) {
     : `<div class="text-slate-400 text-sm">لا توجد مرتجعات.</div>`;
 }
 
-async function submitClientReturn(clientId, productName, unitPrice, key) {
+async function submitClientReturn(clientId, productName, unitPrice, unitCost, key) {
   const input = $('returnQty_' + key);
   const qty = parseInt(input.value, 10);
   if (!qty || qty <= 0) return warn('خطأ', 'أدخل كمية صحيحة');
@@ -1276,7 +1469,20 @@ async function submitClientReturn(clientId, productName, unitPrice, key) {
 
   const client = state.clients.find(c => c.id === clientId);
   const amount = calcLineTotal(unitPrice, qty);
-  const newReturn = { id: 'RET-' + Date.now(), ts: Date.now(), date: nowStr(), clientId, clientName: client.name, productName, qty, unitPrice, amount };
+  const profitAdjustment = roundMoney((toNum(unitPrice) - toNum(unitCost)) * qty);
+  const newReturn = {
+    id: 'RET-' + Date.now(),
+    ts: Date.now(),
+    date: nowStr(),
+    clientId,
+    clientName: client.name,
+    productName,
+    qty,
+    unitPrice,
+    unitCost: toNum(unitCost),
+    amount,
+    profitAdjustment
+  };
 
   state.returns.push(newReturn);
   logAudit('مرتجع', `إرجاع ${qty} × ${productName} بسعر ${fmtCur(unitPrice)} لـ ${client.name}`);
@@ -1285,6 +1491,7 @@ async function submitClientReturn(clientId, productName, unitPrice, key) {
 
   renderLedgerSummary(clientId);
   renderClientReturnsTab(clientId);
+  renderReports();
   toast(`تم إرجاع ${qty} ${productName} وخصم ${fmtCur(amount)}`);
 }
 
@@ -1319,11 +1526,13 @@ function deletePayment(payId) {
     switchLedgerSubTab('statement');
     toast('تم الحذف');
   });
-}/* ==================== Companies & Purchases ==================== */
+}
+
+/* ==================== Companies & Purchases ==================== */
 function getCompanyDebt(companyId) {
   const purchasesRemaining = sumList(state.purchases.filter(p => p.companyId === companyId && p.status === 'active'), p => p.remaining);
   const paymentsMade = sumList(state.companyPayments.filter(p => p.companyId === companyId), p => p.amount);
-  return roundMoney(purchasesRemaining - paymentsMade);
+  return Math.max(0, roundMoney(purchasesRemaining - paymentsMade));
 }
 
 function renderCompaniesGrid() {
@@ -1400,8 +1609,9 @@ async function saveCompanyProductEdit() {
   const oldData = { ...pr };
   pr.name = $('cpNameInput').value.trim();
   pr.boxPrice = toNum($('cpBoxPriceInput').value);
-  pr.piecesPerBox = toNum($('cpPiecesPerBoxInput').value) || 1;
-  pr.piecePrice = toNum($('cpPiecePriceInput').value);
+  pr.piecesPerBox = Math.max(1, toNum($('cpPiecesPerBoxInput').value) || 1);
+  const enteredPiece = toNum($('cpPiecePriceInput').value);
+  pr.piecePrice = enteredPiece > 0 ? enteredPiece : (pr.boxPrice > 0 ? roundMoney(pr.boxPrice / pr.piecesPerBox) : 0);
   pr.consumerPrice = toNum($('cpConsumerPriceInput').value);
 
   if (!pr.name) return warn('خطأ', 'أدخل اسم المنتج');
@@ -1983,15 +2193,18 @@ function renderReports() {
   const invs = state.invoices.filter(i => i.status === 'active' && inRange(i.ts));
   const dsList = state.directSales.filter(d => inRange(d.ts));
   const exps = state.expenses.filter(e => inRange(e.ts));
+  const rets = state.returns.filter(r => inRange(r.ts));
 
-  const sales = roundMoney(sumList(invs, i => i.total) + sumList(dsList, d => d.total));
-  const profit = roundMoney(sumList(invs, i => i.profit) + sumList(dsList, d => d.profit));
+  const returnsTotal = sumList(rets, r => r.amount);
+  const returnsProfitDed = sumList(rets, r => r.profitAdjustment);
+  const sales = roundMoney(sumList(invs, i => i.total) + sumList(dsList, d => d.total) - returnsTotal);
+  const profit = roundMoney(sumList(invs, i => i.profit) + sumList(dsList, d => d.profit) - returnsProfitDed);
   const expTotal = sumList(exps, e => e.amount);
 
   const card = (label, value, color) => `<div class="bg-${color}-50 border border-${color}-200 rounded-xl p-3"><span class="block text-xs text-${color}-700">${label}</span><span class="text-sm font-bold text-${color}-900">${value}</span></div>`;
   $('reportCards').innerHTML =
     card('الفواتير + بيع سريع', `${fmt(invs.length)} + ${fmt(dsList.length)}`, 'emerald') +
-    card('المبيعات', fmtCur(sales), 'blue') +
+    card('صافي المبيعات', fmtCur(sales), 'blue') +
     card('إجمالي الربح', fmtCur(profit), 'indigo') +
     card('المصاريف', fmtCur(expTotal), 'purple');
 
@@ -2007,6 +2220,13 @@ function renderReports() {
     if (!map[k]) map[k] = { name: d.name, qty: 0, rev: 0 };
     map[k].qty = roundMoney(map[k].qty + toNum(d.qty));
     map[k].rev = roundMoney(map[k].rev + toNum(d.total));
+  });
+  rets.forEach(r => {
+    const k = normalizeArabic(r.productName);
+    if (map[k]) {
+      map[k].qty = Math.max(0, roundMoney(map[k].qty - toNum(r.qty)));
+      map[k].rev = Math.max(0, roundMoney(map[k].rev - toNum(r.amount)));
+    }
   });
   const top = Object.values(map).sort((a, b) => b.qty - a.qty).slice(0, 10);
   $('topProductsBody').innerHTML = top.map(t => `<tr class="border-b border-slate-100"><td class="p-2.5 text-slate-800">${esc(t.name)}</td><td class="p-2.5 text-ashour font-bold">${fmt(t.qty)}</td><td class="p-2.5 text-slate-700">${fmtCur(t.rev)}</td></tr>`).join('') || `<tr><td colspan="3" class="p-4 text-center text-slate-400">لا بيانات</td></tr>`;
@@ -2110,6 +2330,9 @@ function importDataBackup(ev) {
         state = Object.assign(defaultState(), incoming);
         ['returns', 'directSales', 'noInvoiceItems', 'companies', 'payments', 'expenses', 'invoices', 'purchases', 'companyPayments', 'personDebts'].forEach(k => {
           if (!Array.isArray(state[k])) state[k] = [];
+        });
+        state.clients.forEach(c => {
+          if (!c.customPrices || typeof c.customPrices !== 'object') c.customPrices = {};
         });
         state.pinHash = keepPin; state.pinLength = keepLen || 4; state.pinSalt = keepSalt || state.pinSalt; state.cart = [];
         const ok = await saveToStorage();
@@ -2293,6 +2516,9 @@ function renderAll() {
   renderAuditLog();
   renderPurchases();
   renderPersonDebts();
+  if (state.currentLedgerClientId && !$('view-client-detail').classList.contains('hidden')) {
+    renderClientSpecialPrices(state.currentLedgerClientId);
+  }
   if (!$('view-reports').classList.contains('hidden')) renderReports();
 }
 
@@ -2307,9 +2533,10 @@ window.addEventListener('DOMContentLoaded', async function () {
   loadStoreInfoToSettings();
   renderAll();
   switchDebtTab(currentDebtTab || 'take');
-  
-  // تهيئة المزامنة السحابية (Firebase)
-  if (window.FireSync) window.FireSync.init();
+
+  if (window.FireSync && typeof window.FireSync.init === 'function') {
+    window.FireSync.init();
+  }
 
   setTimeout(() => { const q = $('quickEntryInput'); if (q) q.focus(); }, 300);
 });
