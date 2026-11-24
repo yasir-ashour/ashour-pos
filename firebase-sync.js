@@ -1,8 +1,9 @@
-// firebase-sync.js — المزامنة السحابية
+// firebase-sync.js — المزامنة السحابية (نسخة نهائية مصححة)
 const FireSync = {
   currentUser: null,
   _isSyncing: false,
   _pendingSave: null,
+  _initialized: false,
 
   _mergeById(localArr = [], remoteArr = []) {
     const map = new Map();
@@ -68,6 +69,7 @@ const FireSync = {
       if (!c.customPrices || typeof c.customPrices !== 'object') c.customPrices = {};
     });
 
+    // السلة لا تُمسح عند المزامنة
     merged.cart = Array.isArray(localState.cart) ? localState.cart : [];
 
     merged.lastUpdated = Math.max(
@@ -81,7 +83,13 @@ const FireSync = {
 
   init() {
     const auth = window.firebaseAuth;
-    if (!auth) return;
+    if (!auth) {
+      // Firebase SDK لم يُحمّل بعد — أعد المحاولة
+      setTimeout(() => this.init(), 500);
+      return;
+    }
+    if (this._initialized) return;
+    this._initialized = true;
 
     window.firebaseOnAuthStateChanged(auth, async (user) => {
       this.currentUser = user;
@@ -117,9 +125,17 @@ const FireSync = {
         btn.classList.remove('bg-white', 'text-blue-700', 'border-blue-300', 'hover:bg-blue-50');
         btn.classList.add('bg-rose-50', 'text-rose-700', 'border-rose-300', 'hover:bg-rose-100');
       }
-      if (statusEl) statusEl.innerHTML = isOnline ? `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-cloud"></i> متزامن</span>` : `<span class="text-amber-600 font-bold"><i class="fa-solid fa-cloud-slash"></i> غير متصل</span>`;
+      if (statusEl) {
+        statusEl.innerHTML = isOnline
+          ? `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-cloud"></i> متزامن</span>`
+          : `<span class="text-amber-600 font-bold"><i class="fa-solid fa-cloud-slash"></i> غير متصل</span>`;
+      }
       if (emailEl) emailEl.textContent = user.email || '';
-      if (headerStatus) headerStatus.innerHTML = isOnline ? `<i class="fa-solid fa-cloud text-emerald-300"></i> متزامن` : `<i class="fa-solid fa-cloud-slash text-amber-300"></i> غير متصل`;
+      if (headerStatus) {
+        headerStatus.innerHTML = isOnline
+          ? `<i class="fa-solid fa-cloud text-emerald-300"></i> متزامن`
+          : `<i class="fa-solid fa-cloud-slash text-amber-300"></i> غير متصل`;
+      }
     } else {
       if (text) text.textContent = 'تسجيل الدخول بـ Google';
       if (btn) {
@@ -133,12 +149,20 @@ const FireSync = {
   },
 
   async login() {
-    if (!window.firebaseAuth) return;
+    if (!window.firebaseAuth) {
+      if (typeof Swal !== 'undefined') Swal.fire('خطأ', 'النظام لم يجهز بعد. أعد تحميل الصفحة وحاول مرة أخرى.', 'error');
+      return;
+    }
     try {
       await window.firebaseSignIn(window.firebaseAuth, window.googleProvider);
     } catch (error) {
       console.error('Login failed:', error);
-      if (typeof Swal !== 'undefined') Swal.fire('خطأ', 'فشل تسجيل الدخول. تأكد من النطاق أو أعد المحاولة.', 'error');
+      if (typeof Swal !== 'undefined') {
+        const msg = error && error.code === 'auth/popup-blocked'
+          ? 'المتصفح منع النافذة المنبثقة. اسمح بالنوافذ المنبثقة ثم أعد المحاولة.'
+          : 'فشل تسجيل الدخول. تأكد من أن النطاق مضاف في Firebase Console.';
+        Swal.fire('خطأ', msg, 'error');
+      }
     }
   },
 
@@ -159,9 +183,9 @@ const FireSync = {
         await window.firebaseSignOut(window.firebaseAuth);
         if (typeof toast === 'function') toast('تم تسجيل الخروج بنجاح', 'success');
       }
-    } catch(e) {
+    } catch (e) {
       console.error('Logout error:', e);
-      Swal.fire('خطأ', 'تعذر تسجيل الخروج', 'error');
+      if (typeof Swal !== 'undefined') Swal.fire('خطأ', 'تعذر تسجيل الخروج', 'error');
     }
   },
 
@@ -230,8 +254,19 @@ const FireSync = {
   }
 };
 
+// ✅ الإصلاح الحاسم: جعل FireSync متاحاً عالمياً
+window.FireSync = FireSync;
+
+// دالة زر Google (تعمل دائماً حتى لو FireSync لم يُهيأ بعد)
 window.handleGoogleLoginClick = function () {
-  if (!window.FireSync) return;
+  if (!window.FireSync) {
+    console.error('FireSync غير محمّل — قد يكون الملف firebase-sync.js لم يُحمّل بعد');
+    if (typeof Swal !== 'undefined') Swal.fire('خطأ', 'النظام قيد التحميل. أعد المحاولة بعد ثانية.', 'warning');
+    return;
+  }
+  // إذا لم يكتمل init بعد، نفّذه الآن
+  if (!FireSync._initialized) FireSync.init();
+
   if (FireSync.currentUser) FireSync.logout();
   else FireSync.login();
 };
