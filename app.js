@@ -1,5 +1,5 @@
 /* ==========================================================================
-   app.js — عقل التطبيق الكامل (مركز عاشور)
+   app.js — الجزء الأول (المعدّل)
    ========================================================================== */
 
 const CURRENCY = 'ل.س.ج';
@@ -27,7 +27,16 @@ function fmt(n) {
   return parts.length > 1 ? `${intFormatted}.${parts[1]}` : intFormatted;
 }
 function fmtCur(n) {
-  return `${fmt(n)} ${CURRENCY}`;
+  if (state.displayCurrency === 'USD') {
+    const usd = toNum(n) / toNum(state.exchangeRate || 15000);
+    return '$' + usd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  }
+  return `${fmt(n)} ل.س.ج`;
+}
+// ✅ جديد: عرض مزدوج (ل.س + دولار تقريبي)
+function fmtDual(sypAmount) {
+  const usd = toNum(sypAmount) / toNum(state.exchangeRate || 15000);
+  return `${fmt(sypAmount)} ل.س.ج (≈ $${usd.toFixed(2)})`;
 }
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -62,18 +71,7 @@ const debouncedRenderClientsGrid   = debounce(() => renderClientsGrid(), 220);
 const debouncedRenderCompaniesGrid = debounce(() => renderCompaniesGrid(), 220);
 
 const DEFAULT_CATEGORIES = ['بسكويت', 'شيبس', 'عصائر ومشروبات', 'سكاكر وعلكة', 'قهوة', 'مواد غذائية'];
-const IMPORTED_PRODUCTS = [
-  { name: "اربيكا طبيعي صغير", category: "شيبس" }, { name: "اربيكا طبيعي جامبو", category: "شيبس" },
-  { name: "تورتيز رقائق كبير 100", category: "شيبس" }, { name: "تورتيز رقائق", category: "شيبس" },
-  { name: "سبوكي كبير 100", category: "شيبس" }, { name: "عصير كرتون 20", category: "عصائر ومشروبات" },
-  { name: "اوكتبوس كرنشي", category: "شيبس" }, { name: "قهوه سادة موكا 100g", category: "قهوة" },
-  { name: "قهوه كلاسيك مع الهال 100g", category: "قهوة" }, { name: "قهوة إكسترا هال 200", category: "قهوة" },
-  { name: "قهوة كلاسيك مع هال 200g", category: "قهوة" }, { name: "توب فريش ساور", category: "سكاكر وعلكة" },
-  { name: "كب كيك", category: "بسكويت" }, { name: "حنجور شوكالا", category: "بسكويت" },
-  { name: "بسكويت ماتيلدا دارك", category: "بسكويت" }, { name: "بسكويت كريمة", category: "بسكويت" },
-  { name: "سلسيتو مالح", category: "بسكويت" }, { name: "بسكوت مي تو", category: "بسكويت" },
-  { name: "بسكويت تاندا", category: "بسكويت" }, { name: "قهوه اكسترا هال 100g", category: "قهوة" }
-];
+const IMPORTED_PRODUCTS = [];
 
 let state = {};
 let isCheckoutSubmitting = false;
@@ -83,22 +81,15 @@ function defaultState() {
   return {
     pinHash: null, pinSalt: null, pinLength: 4, pinAttempts: 0, pinLockUntil: 0,
     storeInfo: { name: 'مركز عاشور للتجارة', phone: '0991234567', address: 'السوق المركزي - صالة الجملة' },
-    products: IMPORTED_PRODUCTS.map((p, i) => ({
-      id: (i + 1).toString(),
-      sku: (101 + i).toString(),
-      barcode: '',
-      name: p.name,
-      category: p.category,
-      cost: 0,
-      retailPrice: 0,
-      wholesalePrice: 0
-    })),
+    displayCurrency: 'SYP',
+    exchangeRate: 15000,
+    products: [],
     clients: [
-      { id: 'c1', name: 'زبون نقدي مباشر', type: 'retail', phone: '-', address: '-', openingDebt: 0, customPrices: {} },
-      { id: 'c2', name: 'سوبرماركت البركة (موزع)', type: 'wholesale', phone: '0998877665', address: 'شارع التجارة', openingDebt: 150, customPrices: {} }
+      { id: 'c1', name: 'زبون نقدي مباشر', type: 'retail', phone: '-', address: '-', openingDebt: 0, customPrices: {} }
     ],
     invoices: [], expenses: [], payments: [], returns: [], directSales: [], noInvoiceItems: [],
     companies: [], purchases: [], companyPayments: [], personDebts: [],
+    orders: [], // ✅ جديد
     auditLog: [{ ts: Date.now(), date: nowStr(), type: 'النظام', details: 'بدء تشغيل النظام', status: 'مكتمل' }],
     invoiceCounter: 1000,
     cart: [],
@@ -138,7 +129,7 @@ async function loadFromStorage() {
   if (result.ok && result.state) state = deepMerge(defaultState(), result.state);
   else state = defaultState();
 
-  ['returns', 'directSales', 'noInvoiceItems', 'companies', 'payments', 'expenses', 'invoices', 'products', 'clients', 'purchases', 'companyPayments', 'personDebts'].forEach(k => {
+  ['returns', 'directSales', 'noInvoiceItems', 'companies', 'payments', 'expenses', 'invoices', 'products', 'clients', 'purchases', 'companyPayments', 'personDebts', 'orders'].forEach(k => {
     if (!Array.isArray(state[k])) state[k] = [];
   });
 
@@ -267,6 +258,17 @@ function logAudit(type, details) {
   AshourDB.addAudit(entry);
 }
 
+async function toggleCurrency() {
+  state.displayCurrency = state.displayCurrency === 'USD' ? 'SYP' : 'USD';
+  const btn = $('currencyToggleBtn');
+  const btnD = $('currencyToggleBtnDesktop');
+  if (btn) btn.textContent = state.displayCurrency;
+  if (btnD) btnD.textContent = state.displayCurrency;
+  await saveToStorage();
+  renderAll();
+  toast(`تم التبديل إلى ${state.displayCurrency === 'USD' ? 'الدولار' : 'الليرة السورية'}`, 'info');
+}
+
 function switchTab(tabId) {
   document.querySelectorAll('.tab-view').forEach(el => { el.classList.add('hidden'); el.classList.remove('active'); });
   const view = $('view-' + tabId);
@@ -281,11 +283,13 @@ function switchTab(tabId) {
   if (tabId === 'debts') switchDebtTab(currentDebtTab || 'take');
   if (tabId === 'clients') renderClientsGrid();
   if (tabId === 'companies') renderCompaniesGrid();
+  if (tabId === 'orders') { renderOrders(); updateOrdersBadge(); } // ✅ جديد
 
   renderAll();
 }
 
-const MODAL_IDS = ['barcodeScannerModal', 'quickProductModal', 'directSaleModal', 'productModal', 'companyModal', 'companyProductModal', 'purchaseModal', 'personDebtModal', 'companyPaymentModal', 'receiptModal', 'clientModal', 'customPricesModal'];
+// ✅ أضفنا orderModal و expenseModal
+const MODAL_IDS = ['barcodeScannerModal', 'quickProductModal', 'directSaleModal', 'productModal', 'companyModal', 'companyProductModal', 'purchaseModal', 'personDebtModal', 'companyPaymentModal', 'receiptModal', 'clientModal', 'customPricesModal', 'orderModal', 'expenseModal'];
 
 window.addEventListener('popstate', () => {
   if ($('barcodeScannerModal') && !$('barcodeScannerModal').classList.contains('hidden')) { closeBarcodeScanner(); history.pushState(null, null, location.href); return; }
@@ -323,6 +327,14 @@ function selectProdCat(cat) {
 }
 function toggleProdCatDropdown() { $('prodCatDropdownList').classList.toggle('hidden'); }
 
+function selectInvoiceStatus(val, label) {
+  $('invoiceStatusFilter').value = val;
+  $('selectedInvoiceStatusText').textContent = label;
+  $('invoiceStatusDropdownList').classList.add('hidden');
+  renderInvoicesTable();
+}
+
+// ✅ إصلاح: تضمين الاستردادات السالبة (كانت مستبعدة بفلتر amount > 0)
 function getClientDebt(clientId) {
   const c = state.clients.find(x => x.id === clientId);
   if (!c) return 0;
@@ -694,6 +706,24 @@ function addToCart(productId) {
   renderCart();
 }
 
+function addQuickCookie(price) {
+  const name = `علب بسكويت سعر ال ${price}`;
+  const existing = state.cart.find(i => i.isQuickOnly && i.name === name && toNum(i.price) === price);
+  if (existing) {
+    existing.qty = roundMoney(toNum(existing.qty) + 1);
+  } else {
+    state.cart.push({ 
+      isQuickOnly: true, 
+      quickId: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2,5), 
+      name: name, 
+      price: price, 
+      qty: 1 
+    });
+  }
+  renderCart();
+  toast(`تمت إضافة ${name}`);
+}
+
 function setCartItemQtyDirect(key, rawVal) {
   const item = state.cart.find(i => (i.quickId || i.productId) === key);
   if (!item) return;
@@ -774,7 +804,7 @@ function renderCart() {
       return `<div class="py-2 flex items-center justify-between gap-2 num-tabular">
         <div class="flex-grow min-w-0">
           <h5 class="font-bold text-xs text-slate-800 truncate">${esc(info.name)} ${info.isCustom ? '<span class="text-[10px] bg-purple-100 text-purple-800 px-1 rounded">خاص</span>' : ''}</h5>
-          <span class="text-[11px] text-slate-500 font-semibold">${fmt(info.unitPrice)} × ${item.qty}</span>
+          <span class="text-[11px] text-slate-500 font-semibold">${fmtCur(info.unitPrice)} × ${item.qty}</span>
         </div>
         <div class="flex items-center gap-1">
           <button onclick="updateCartQty('${esc(info.key)}', -1)" class="w-6 h-6 bg-slate-200 hover:bg-rose-500 hover:text-white rounded text-xs font-bold">−</button>
@@ -786,28 +816,50 @@ function renderCart() {
     }).join('');
   }
 
+  // ✅ إصلاح: تنبيه الخصم لا يظهر إلا إذا كان الخصم ≥ 50 وحدة و ≥ 15%
   const warnBadge = $('discountWarningBadge');
   if (warnBadge) {
-    if (discount > 0 && discountPct >= 15) {
+    const shouldWarn = discount >= 50 && discountPct >= 15;
+    if (shouldWarn) {
       $('discountPctText').textContent = `${discountPct}%`;
       warnBadge.classList.remove('hidden');
-    } else warnBadge.classList.add('hidden');
+    } else {
+      warnBadge.classList.add('hidden');
+      $('discountPctText').textContent = '0%';
+    }
   }
 
-  $('cartSubtotal').textContent = fmtCur(subtotal);
-  $('cartTotal').textContent = fmtCur(total);
+  // ✅ عرض مزدوج (ل.س + دولار)
+  $('cartSubtotal').textContent = fmtDual(subtotal);
+  $('cartTotal').textContent = fmtDual(total);
   $('posPaidAmount').placeholder = `الإجمالي: ${fmt(total)}`;
   updatePaymentSummaryPreview();
 }
 
-function setPaidExact() { $('posPaidAmount').value = cartTotals().total; updatePaymentSummaryPreview(); }
+// ✅ إصلاح: عند USD نحول من دولار إلى ليرة
+function setPaidExact() { 
+  const total = cartTotals().total;
+  $('posPaidAmount').value = state.displayCurrency === 'USD'
+    ? roundMoney(total / state.exchangeRate)
+    : total;
+  updatePaymentSummaryPreview(); 
+}
 function setCreditMode() { $('posPaidAmount').value = 0; updatePaymentSummaryPreview(); }
-function setPaidAmount(amt) { $('posPaidAmount').value = amt; updatePaymentSummaryPreview(); }
+function setPaidAmount(amt) { 
+  $('posPaidAmount').value = state.displayCurrency === 'USD'
+    ? roundMoney(amt / state.exchangeRate)
+    : amt;
+  updatePaymentSummaryPreview(); 
+}
 
+// ✅ إصلاح: تحويل القيمة المُدخلة عند USD
 function updatePaymentSummaryPreview() {
   const { total } = cartTotals();
   const raw = $('posPaidAmount').value.trim();
-  const paidEntered = raw === '' ? total : Math.max(0, toNum(raw));
+  let paidEntered = raw === '' ? total : Math.max(0, toNum(raw));
+  if (state.displayCurrency === 'USD' && raw !== '') {
+    paidEntered = paidEntered * state.exchangeRate;
+  }
   const labelEl = $('posBalanceLabel');
   const valEl = $('posBalanceValue');
   if (!labelEl || !valEl) return;
@@ -857,7 +909,12 @@ async function checkoutPOS() {
   }
 
   const paidRaw = $('posPaidAmount').value.trim();
-  const paidEntered = paidRaw === '' ? total : Math.max(0, toNum(paidRaw));
+  let paidEntered = paidRaw === '' ? total : Math.max(0, toNum(paidRaw));
+
+  if (state.displayCurrency === 'USD' && paidRaw !== '') {
+    paidEntered = paidEntered * state.exchangeRate;
+  }
+
   const changeGiven = paidEntered > total ? roundMoney(paidEntered - total) : 0;
   const paidRecorded = roundMoney(Math.min(paidEntered, total));
   const remaining = roundMoney(total - paidRecorded);
@@ -870,55 +927,55 @@ async function checkoutPOS() {
   isCheckoutSubmitting = true;
   if (saveBtn) saveBtn.disabled = true;
 
-  const items = state.cart.map(item => {
-    const info = getCartItemInfo(item);
-    return {
-      productId: info.productId, name: info.name, qty: toNum(item.qty),
-      price: info.unitPrice, cost: info.unitCost,
-      total: calcLineTotal(info.unitPrice, item.qty),
-      isQuickOnly: info.isQuickOnly
+  try {
+    const items = state.cart.map(item => {
+      const info = getCartItemInfo(item);
+      return {
+        productId: info.productId, name: info.name, qty: toNum(item.qty),
+        price: info.unitPrice, cost: info.unitCost,
+        total: calcLineTotal(info.unitPrice, item.qty),
+        isQuickOnly: info.isQuickOnly
+      };
+    });
+
+    const paymentType = remaining > 0 ? (paidRecorded > 0 ? 'partial' : 'debt') : 'cash';
+    const priceModeLabel = getActivePriceType() === 'wholesale' ? 'جملة' : 'تجزئة';
+
+    const prevCounter = state.invoiceCounter;
+    const inv = {
+      id: nextInvoiceNumber(),
+      ts: Date.now(), date: nowStr(),
+      clientId: client.id, clientName: client.name,
+      priceMode: priceModeLabel, paymentType,
+      items, discount, total,
+      paid: paidRecorded, remaining, changeGiven,
+      profit: roundMoney(total - cost), status: 'active'
     };
-  });
 
-  const paymentType = remaining > 0 ? (paidRecorded > 0 ? 'partial' : 'debt') : 'cash';
-  const priceModeLabel = getActivePriceType() === 'wholesale' ? 'جملة' : 'تجزئة';
+    const previousInvoices = [...state.invoices];
+    state.invoices.push(inv);
+    logAudit('بيع فاتورة', `فاتورة ${inv.id} للزبون ${client.name} (${priceModeLabel}) بمبلغ ${fmtCur(total)} — متبقي ${fmtCur(remaining)}`);
 
-  const prevCounter = state.invoiceCounter;
-  const inv = {
-    id: nextInvoiceNumber(),
-    ts: Date.now(), date: nowStr(),
-    clientId: client.id, clientName: client.name,
-    priceMode: priceModeLabel, paymentType,
-    items, discount, total,
-    paid: paidRecorded, remaining, changeGiven,
-    profit: roundMoney(total - cost), status: 'active'
-  };
+    const ok = await saveToStorage();
+    if (!ok) {
+      state.invoices = previousInvoices;
+      state.invoiceCounter = prevCounter;
+      return;
+    }
 
-  const previousInvoices = [...state.invoices];
-  state.invoices.push(inv);
-  logAudit('بيع فاتورة', `فاتورة ${inv.id} للزبون ${client.name} (${priceModeLabel}) بمبلغ ${fmtCur(total)} — متبقي ${fmtCur(remaining)}`);
-
-  const ok = await saveToStorage();
-  if (!ok) {
-    state.invoices = previousInvoices;
-    state.invoiceCounter = prevCounter;
-    isCheckoutSubmitting = false;
-    if (saveBtn) saveBtn.disabled = false;
-    return;
+    showReceiptModal(inv);
+    state.cart = [];
+    state.posPriceOverride = null;
+    $('posPaidAmount').value = '';
+    $('posDiscount').value = '';
+    updatePosPriceUI();
+    renderPosProducts();
+    renderCart();
+    renderAll();
+    toast('تم حفظ الفاتورة');
+  } finally {
+    setTimeout(() => { isCheckoutSubmitting = false; if (saveBtn) saveBtn.disabled = false; }, 500);
   }
-
-  showReceiptModal(inv);
-  state.cart = [];
-  state.posPriceOverride = null;
-  $('posPaidAmount').value = '';
-  $('posDiscount').value = '';
-  updatePosPriceUI();
-  renderPosProducts();
-  renderCart();
-  renderAll();
-  toast('تم حفظ الفاتورة');
-
-  setTimeout(() => { isCheckoutSubmitting = false; if (saveBtn) saveBtn.disabled = false; }, 500);
 }
 
 let html5QrCode = null;
@@ -991,13 +1048,18 @@ function updateDirectSaleCalc() {
 async function saveDirectSale() {
   const name = $('dsName').value.trim();
   const qty = Math.max(1, parseInt($('dsQty').value, 10) || 1);
-  const price = toNum($('dsPrice').value);
+  let price = toNum($('dsPrice').value);
   if (!name) return warn('خطأ', 'أدخل اسم الصنف');
   if (price <= 0) return warn('خطأ', 'أدخل سعراً صحيحاً');
 
+  if (state.displayCurrency === 'USD') price = price * state.exchangeRate;
+
   const total = calcLineTotal(price, qty);
   const paidRaw = $('dsPaid').value.trim();
-  const paidEntered = paidRaw === '' ? total : Math.max(0, toNum(paidRaw));
+  let paidEntered = paidRaw === '' ? total : Math.max(0, toNum(paidRaw));
+
+  if (state.displayCurrency === 'USD' && paidRaw !== '') paidEntered = paidEntered * state.exchangeRate;
+
   const paidRecorded = roundMoney(Math.min(paidEntered, total));
   const remaining = roundMoney(total - paidRecorded);
 
@@ -1014,7 +1076,6 @@ async function saveDirectSale() {
   renderAll();
   toast(`تم تسجيل ${qty} × ${name}`);
 }
-
 function generateUniqueSku() {
   const existing = new Set(state.products.map(p => String(p.sku || '').trim()));
   let num = Math.max(200, 101 + state.products.length);
@@ -1078,13 +1139,19 @@ async function saveProduct() {
   const barcode = $('prodBarcodeInput').value.trim();
   const name = $('prodNameInput').value.trim();
   const category = $('prodCatInput').value.trim() || 'مواد غذائية';
-  const cost = toNum($('prodCostInput').value);
-  const retailPrice = toNum($('prodRetailInput').value);
-  const wholesalePrice = toNum($('prodWholesaleInput').value);
+  let cost = toNum($('prodCostInput').value);
+  let retailPrice = toNum($('prodRetailInput').value);
+  let wholesalePrice = toNum($('prodWholesaleInput').value);
 
   if (!name) return warn('خطأ', 'أدخل اسم المنتج');
   if (retailPrice <= 0 && wholesalePrice <= 0) return warn('خطأ', 'أدخل سعراً واحداً على الأقل');
   if (!sku) sku = generateUniqueSku();
+
+  if (state.displayCurrency === 'USD') {
+    cost = cost * state.exchangeRate;
+    retailPrice = retailPrice * state.exchangeRate;
+    wholesalePrice = wholesalePrice * state.exchangeRate;
+  }
 
   const duplicate = state.products.find(p => p.sku === sku && p.id !== editId);
   if (duplicate) return warn('كود مكرر', `الكود ${sku} مستخدم للمنتج: ${duplicate.name}`, 'error');
@@ -1140,11 +1207,13 @@ function openQuickProductModal(prefillBarcode = '') {
 }
 function saveQuickProduct() {
   const name = $('qpName').value.trim();
-  const price = toNum($('qpPrice').value);
+  let price = toNum($('qpPrice').value);
   const qty = Math.max(1, parseInt($('qpQty').value, 10) || 1);
   const barcode = $('qpBarcode').value.trim();
   if (!name) return warn('خطأ', 'أدخل اسم المنتج');
   if (!(price > 0)) return warn('خطأ', 'أدخل سعراً صحيحاً');
+
+  if (state.displayCurrency === 'USD') price = price * state.exchangeRate;
 
   state.cart.push({
     isQuickOnly: true,
@@ -1185,10 +1254,12 @@ async function saveClient() {
   const name = $('clientNameInput').value.trim();
   const phone = $('clientPhoneInput').value.trim() || '-';
   const address = $('clientAddressInput').value.trim() || '-';
-  const openingDebt = toNum($('clientOpeningInput').value);
+  let openingDebt = toNum($('clientOpeningInput').value);
   const checkedRadio = document.querySelector('input[name="clientTypeRadio"]:checked');
   const type = checkedRadio ? checkedRadio.value : 'retail';
   if (!name) return warn('خطأ', 'أدخل اسم الزبون');
+
+  if (state.displayCurrency === 'USD') openingDebt = openingDebt * state.exchangeRate;
 
   let previous = null;
   if (editId) {
@@ -1295,7 +1366,7 @@ function renderLedgerSummary(clientId) {
   if (!c) return;
   const activeInvs = state.invoices.filter(i => i.clientId === clientId && i.status === 'active');
   const totalPurchases = sumList(activeInvs, i => i.total);
-  const totalPaid = sumList(activeInvs, i => i.paid) + sumList(state.payments.filter(p => p.clientId === clientId && p.amount > 0), p => p.amount);
+  const totalPaid = sumList(activeInvs, i => i.paid) + sumList(state.payments.filter(p => p.clientId === clientId), p => p.amount);
   const totalReturns = sumList(state.returns.filter(r => r.clientId === clientId), r => r.amount);
   const currentDebt = getClientDebt(clientId);
 
@@ -1370,7 +1441,6 @@ function getClientReturnableSummary(clientId) {
   return [...map.values()].map(x => ({ ...x, remainingQty: Math.max(0, roundMoney(x.boughtQty - x.returnedQty)) }));
 }
 
-// ✅ تم إضافة أزرار + و - في المرتجعات
 function renderClientReturnsTab(clientId) {
   const list = getClientReturnableSummary(clientId);
   const container = $('clientReturnableItemsList');
@@ -1406,7 +1476,6 @@ function renderClientReturnsTab(clientId) {
     : `<div class="text-slate-400 text-sm">لا توجد مرتجعات.</div>`;
 }
 
-// دالة جديدة تحكم أزرار + و -
 function adjustReturnQty(key, delta) {
   const input = $('returnQty_' + key);
   if (!input || input.disabled) return;
@@ -1451,8 +1520,10 @@ async function recordDebtPayment() {
   const clientId = state.currentLedgerClientId;
   const c = state.clients.find(x => x.id === clientId);
   if (!c) return;
-  const amount = toNum($('payDebtAmount').value);
+  let amount = toNum($('payDebtAmount').value);
   if (amount <= 0) return warn('تنبيه', 'أدخل مبلغاً صحيحاً');
+
+  if (state.displayCurrency === 'USD') amount = amount * state.exchangeRate;
 
   const newPay = { id: 'PAY-' + Date.now(), ts: Date.now(), date: nowStr(), clientId, amount, note: '' };
   state.payments.push(newPay);
@@ -1556,11 +1627,20 @@ async function saveCompanyProductEdit() {
 
   const oldData = { ...pr };
   pr.name = $('cpNameInput').value.trim();
-  pr.boxPrice = toNum($('cpBoxPriceInput').value);
+  let boxPrice = toNum($('cpBoxPriceInput').value);
   pr.piecesPerBox = Math.max(1, toNum($('cpPiecesPerBoxInput').value) || 1);
-  const enteredPiece = toNum($('cpPiecePriceInput').value);
+  let enteredPiece = toNum($('cpPiecePriceInput').value);
+  let consumerPrice = toNum($('cpConsumerPriceInput').value);
+
+  if (state.displayCurrency === 'USD') {
+    boxPrice = boxPrice * state.exchangeRate;
+    enteredPiece = enteredPiece * state.exchangeRate;
+    consumerPrice = consumerPrice * state.exchangeRate;
+  }
+
+  pr.boxPrice = boxPrice;
   pr.piecePrice = enteredPiece > 0 ? enteredPiece : (pr.boxPrice > 0 ? roundMoney(pr.boxPrice / pr.piecesPerBox) : 0);
-  pr.consumerPrice = toNum($('cpConsumerPriceInput').value);
+  pr.consumerPrice = consumerPrice;
 
   if (!pr.name) return warn('خطأ', 'أدخل اسم المنتج');
   const ok = await saveToStorage();
@@ -1716,8 +1796,14 @@ function openPurchaseModal() {
 }
 
 function updatePurchaseCalc() {
-  const total = Math.max(0, toNum($('purTotalAmount')?.value));
-  const paid = Math.max(0, toNum($('purPaidAmount')?.value));
+  let total = Math.max(0, toNum($('purTotalAmount')?.value));
+  let paid = Math.max(0, toNum($('purPaidAmount')?.value));
+
+  if (state.displayCurrency === 'USD') {
+    total = total * state.exchangeRate;
+    paid = paid * state.exchangeRate;
+  }
+
   const remaining = roundMoney(Math.max(0, total - paid));
   const compId = $('purCompanySelect')?.value || '';
   const currentDebt = compId ? getCompanyDebt(compId) : 0;
@@ -1728,12 +1814,17 @@ function updatePurchaseCalc() {
 
 async function savePurchase() {
   const companyId = $('purCompanySelect').value;
-  const total = toNum($('purTotalAmount').value);
+  let total = toNum($('purTotalAmount').value);
   const paidRaw = $('purPaidAmount').value.trim();
-  const paid = paidRaw === '' ? 0 : Math.max(0, toNum(paidRaw));
+  let paid = paidRaw === '' ? 0 : Math.max(0, toNum(paidRaw));
 
   if (!companyId) return warn('خطأ', 'اختر الشركة أو أضف شركة جديدة');
   if (!(total > 0)) return warn('خطأ', 'أدخل سعر الفاتورة');
+
+  if (state.displayCurrency === 'USD') {
+    total = total * state.exchangeRate;
+    paid = paid * state.exchangeRate;
+  }
 
   const comp = state.companies.find(c => c.id === companyId);
   const code = $('purPreviewCode').textContent || generateSixDigitPurchaseCode();
@@ -1828,9 +1919,12 @@ function openCompanyPaymentModal() {
 }
 
 async function recordCompanyPayment() {
-  const amount = toNum($('payCompanyAmount').value);
+  let amount = toNum($('payCompanyAmount').value);
   const notes = $('payCompanyNotes').value.trim();
   if (!(amount > 0)) return warn('خطأ', 'أدخل مبلغاً صحيحاً');
+
+  if (state.displayCurrency === 'USD') amount = amount * state.exchangeRate;
+
   const comp = state.companies.find(c => c.id === state.activeCompanyId);
   const newPayment = { id: 'CPAY-' + Date.now(), ts: Date.now(), date: nowStr(), companyId: state.activeCompanyId, amount, notes };
   state.companyPayments.push(newPayment);
@@ -1877,23 +1971,31 @@ function renderPersonDebts() {
     </tr>`).join('') || `<tr><td colspan="5" class="p-6 text-center text-slate-400 text-sm">لا توجد ديون مسجلة في هذا التبويب</td></tr>`;
 }
 
+// ✅ إصلاح: قراءة من الراديو بدل الـ select
 function openPersonDebtModal(type) {
   $('debtPersonName').value = '';
   $('debtPersonPhone').value = '';
   $('debtPersonAmount').value = '';
   $('debtPersonNotes').value = '';
-  $('debtPersonType').value = type || currentDebtTab || 'take';
+  const val = type || currentDebtTab || 'take';
+  document.querySelectorAll('input[name="debtTypeRadio"]').forEach(r => {
+    r.checked = r.value === val;
+  });
   openModal('personDebtModal');
 }
 
 async function savePersonDebt() {
   const name = $('debtPersonName').value.trim();
   const phone = $('debtPersonPhone').value.trim();
-  const type = $('debtPersonType').value;
-  const amount = toNum($('debtPersonAmount').value);
+  // ✅ إصلاح: قراءة من الراديو
+  const typeEl = document.querySelector('input[name="debtTypeRadio"]:checked');
+  const type = typeEl ? typeEl.value : 'take';
+  let amount = toNum($('debtPersonAmount').value);
   const notes = $('debtPersonNotes').value.trim();
   if (!name) return warn('خطأ', 'أدخل اسم الشخص');
   if (!(amount > 0)) return warn('خطأ', 'أدخل مبلغاً صحيحاً');
+
+  if (state.displayCurrency === 'USD') amount = amount * state.exchangeRate;
 
   const newDebt = { id: 'DEBT-' + Date.now(), ts: Date.now(), name, phone, type, amount, notes };
   state.personDebts.push(newDebt);
@@ -1958,7 +2060,18 @@ function renderInvoicesTable() {
 
   const activeSalesRows = list.filter(r => r.status !== 'cancelled');
   const totalSales = sumList(activeSalesRows, r => r.total);
-  const totalProfit = sumList(activeSalesRows, r => r.profit);
+
+  // ✅ إصلاح: خصم أرباح المرتجعات من إجمالي الربح (لمنع الحساب المزدوج)
+  const filteredReturns = state.returns.filter(r => {
+    if (!r.ts) return false;
+    const k = dayKey(r.ts);
+    if (fromDate && k < fromDate) return false;
+    if (toDate && k > toDate) return false;
+    return true;
+  });
+  const returnsProfitDeduction = sumList(filteredReturns, r => r.profitAdjustment);
+  const totalProfit = roundMoney(sumList(activeSalesRows, r => r.profit) - returnsProfitDeduction);
+
   const totalRemaining = sumList(activeSalesRows, r => r.remaining);
 
   if ($('invoicesSummaryStrip')) {
@@ -2079,9 +2192,12 @@ function openExpenseModal() {
 }
 async function saveExpense() {
   const title = $('expTitle').value.trim();
-  const amount = toNum($('expAmount').value);
+  let amount = toNum($('expAmount').value);
   const notes = $('expNotes').value.trim() || '-';
   if (!title || !(amount > 0)) return warn('خطأ', 'أدخل البند والمبلغ');
+
+  if (state.displayCurrency === 'USD') amount = amount * state.exchangeRate;
+
   const newExp = { id: 'EXP-' + Date.now(), ts: Date.now(), date: nowStr(), title, amount, notes };
   state.expenses.push(newExp);
   logAudit('مصروف', `${title} ${fmtCur(amount)}`);
@@ -2254,13 +2370,21 @@ function importDataBackup(ev) {
         if (!res.isConfirmed) return;
         const keepPin = state.pinHash, keepLen = state.pinLength, keepSalt = state.pinSalt;
         state = Object.assign(defaultState(), incoming);
-        ['returns', 'directSales', 'noInvoiceItems', 'companies', 'payments', 'expenses', 'invoices', 'purchases', 'companyPayments', 'personDebts'].forEach(k => {
+        // ✅ إضافة orders لقائمة الحماية
+        ['returns', 'directSales', 'noInvoiceItems', 'companies', 'payments', 'expenses', 'invoices', 'purchases', 'companyPayments', 'personDebts', 'orders'].forEach(k => {
           if (!Array.isArray(state[k])) state[k] = [];
         });
         state.clients.forEach(c => { if (!c.customPrices || typeof c.customPrices !== 'object') c.customPrices = {}; });
         state.pinHash = keepPin; state.pinLength = keepLen || 4; state.pinSalt = keepSalt || state.pinSalt;
         state.cart = [];
         state.customPricesEditing = null;
+
+        const maxInvNum = Math.max(
+          1000,
+          ...state.invoices.map(i => parseInt(String(i.id).replace(/\D/g, ''), 10) || 0)
+        );
+        state.invoiceCounter = Math.max(maxInvNum, toNum(state.invoiceCounter));
+
         const ok = await saveToStorage();
         if (!ok) return;
         refreshCategoryWidgets();
@@ -2273,6 +2397,27 @@ function importDataBackup(ev) {
     } finally { ev.target.value = ''; }
   };
   reader.readAsText(file);
+}
+
+async function factoryReset() {
+  const res = await Swal.fire({
+    title: 'تصفير النظام؟',
+    text: 'سيتم حذف جميع المنتجات، الفواتير، الزبائن، والشركات نهائياً! هل أنت متأكد؟',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'نعم، امسح كل شيء',
+    cancelButtonText: 'إلغاء'
+  });
+  if (!res.isConfirmed) return;
+
+  localStorage.clear();
+  if (window.indexedDB) indexedDB.deleteDatabase('ashour_pos_db');
+
+  Swal.fire('تم التصفير', 'سيتم إعادة تحميل الصفحة الآن لتبدأ من جديد.', 'success').then(() => {
+    location.reload();
+  });
 }
 
 function normalizePhoneForWA(raw) {
@@ -2340,11 +2485,38 @@ function shareReceiptWhatsApp() {
   window.open(url, '_blank');
 }
 
+// ✅ إصلاح: دالة محسّنة لتوليد صورة الفاتورة (تجنب القص على الشاشات الطويلة)
 async function generateReceiptCanvas() {
   if (typeof html2canvas === 'undefined') throw new Error('html2canvas غير محملة');
   const el = $('printableReceipt');
+  if (!el) throw new Error('عنصر الفاتورة غير موجود');
+
+  const originalOverflow = el.style.overflow;
+  const originalHeight = el.style.height;
+  const originalMaxHeight = el.style.maxHeight;
+
+  el.style.overflow = 'visible';
+  el.style.height = 'auto';
+  el.style.maxHeight = 'none';
+
   if (document.fonts && document.fonts.ready) await document.fonts.ready;
-  return await html2canvas(el, { scale: 4, backgroundColor: '#ffffff', useCORS: true, allowTaint: true });
+
+  try {
+    const canvas = await html2canvas(el, {
+      scale: 3,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      windowWidth: el.scrollWidth,
+      windowHeight: el.scrollHeight
+    });
+    return canvas;
+  } finally {
+    el.style.overflow = originalOverflow;
+    el.style.height = originalHeight;
+    el.style.maxHeight = originalMaxHeight;
+  }
 }
 async function saveReceiptAsImage() {
   try {
@@ -2394,6 +2566,301 @@ document.addEventListener('keydown', e => {
   if (e.key === 'F4') { e.preventDefault(); if (!$('pinOverlay').classList.contains('hidden')) return; if (!$('view-pos').classList.contains('hidden')) checkoutPOS(); }
 });
 
+/* ==========================================================================
+   ✅ الإضافات الجديدة: منتجات البسكويت + الطلبات
+   ========================================================================== */
+
+// ======= منتجات البسكويت الحقيقية =======
+async function ensureCookieProducts() {
+  const cookies = [
+    { sku: 'CK200', name: 'علب بسكويت سعر ال 200', category: 'بسكويت', retailPrice: 200, wholesalePrice: 180, cost: 150 },
+    { sku: 'CK300', name: 'علب بسكويت سعر ال 300', category: 'بسكويت', retailPrice: 300, wholesalePrice: 280, cost: 220 },
+    { sku: 'CK500', name: 'علب بسكويت سعر ال 500', category: 'بسكويت', retailPrice: 500, wholesalePrice: 470, cost: 400 }
+  ];
+  let changed = false;
+  for (const c of cookies) {
+    if (!state.products.find(p => p.sku === c.sku)) {
+      state.products.push({
+        id: 'cookie_' + c.sku,
+        sku: c.sku,
+        barcode: '',
+        name: c.name,
+        category: c.category,
+        cost: c.cost,
+        retailPrice: c.retailPrice,
+        wholesalePrice: c.wholesalePrice
+      });
+      changed = true;
+    }
+  }
+  if (changed) {
+    await saveToStorage();
+    refreshCategoryWidgets();
+  }
+}
+
+function addCookieProduct(price) {
+  const sku = 'CK' + price;
+  const product = state.products.find(p => p.sku === sku);
+  if (product) {
+    addToCart(product.id);
+  } else {
+    addQuickCookie(price);
+  }
+}
+
+// ======= الطلبات =======
+let currentOrderItems = [];
+
+function openOrderModal(orderId = null) {
+  $('orderEditId').value = orderId || '';
+  currentOrderItems = [];
+
+  if (orderId) {
+    const order = state.orders.find(o => o.id === orderId);
+    if (!order) return;
+    $('orderClientSelect').value = order.clientId;
+    $('orderSelectedClientText').textContent = order.clientName;
+    $('orderDueDate').value = order.dueDate || '';
+    $('orderDueTime').value = order.dueTime || '';
+    $('orderNotes').value = order.notes || '';
+    currentOrderItems = JSON.parse(JSON.stringify(order.items || []));
+  } else {
+    $('orderClientSelect').value = '';
+    $('orderSelectedClientText').textContent = 'اختر الزبون';
+    $('orderDueDate').value = dayKey(Date.now());
+    $('orderDueTime').value = '';
+    $('orderNotes').value = '';
+  }
+
+  renderOrderItemsList();
+  populateOrderClients();
+  openModal('orderModal');
+}
+
+function populateOrderClients() {
+  const dropdown = $('orderClientDropdownList');
+  if (!dropdown) return;
+  dropdown.innerHTML = state.clients.map(c =>
+    `<div onclick="selectOrderClient('${esc(c.id)}', '${esc(c.name)}')" class="p-2.5 hover:bg-emerald-50 cursor-pointer text-xs font-bold flex justify-between items-center">
+      <span>${esc(c.name)}</span>
+      <span class="text-[10px] text-slate-500">${esc(c.phone || '-')}</span>
+    </div>`
+  ).join('');
+}
+
+function toggleOrderClientDropdown() {
+  $('orderClientDropdownList').classList.toggle('hidden');
+  populateOrderClients();
+}
+
+function selectOrderClient(id, name) {
+  $('orderClientSelect').value = id;
+  $('orderSelectedClientText').textContent = name;
+  $('orderClientDropdownList').classList.add('hidden');
+}
+
+function addOrderItem() {
+  currentOrderItems.push({ name: '', qty: 1, price: 0 });
+  renderOrderItemsList();
+}
+
+function renderOrderItemsList() {
+  const container = $('orderItemsList');
+  if (!container) return;
+  container.innerHTML = currentOrderItems.map((item, idx) => `
+    <div class="grid grid-cols-12 gap-1 items-center bg-slate-50 p-1.5 rounded-lg">
+      <input type="text" placeholder="الصنف" value="${esc(item.name)}" oninput="updateOrderItem(${idx}, 'name', this.value)" class="col-span-5 bg-white border rounded p-1.5 text-xs">
+      <input type="number" placeholder="كمية" value="${item.qty}" min="1" oninput="updateOrderItem(${idx}, 'qty', this.value)" class="col-span-2 bg-white border rounded p-1.5 text-xs text-center">
+      <input type="number" placeholder="سعر" value="${item.price}" min="0" oninput="updateOrderItem(${idx}, 'price', this.value)" class="col-span-3 bg-white border rounded p-1.5 text-xs text-center">
+      <button onclick="removeOrderItem(${idx})" class="col-span-2 bg-rose-100 text-rose-700 hover:bg-rose-200 rounded p-1.5 text-xs font-bold"><i class="fa-solid fa-trash"></i></button>
+    </div>
+  `).join('') || '<div class="text-xs text-slate-400 text-center py-2">لا توجد أصناف</div>';
+}
+
+function updateOrderItem(idx, field, value) {
+  if (!currentOrderItems[idx]) return;
+  if (field === 'qty') currentOrderItems[idx][field] = Math.max(1, toNum(value) || 1);
+  else if (field === 'price') currentOrderItems[idx][field] = Math.max(0, toNum(value) || 0);
+  else currentOrderItems[idx][field] = value;
+}
+
+function removeOrderItem(idx) {
+  currentOrderItems.splice(idx, 1);
+  renderOrderItemsList();
+}
+
+async function saveOrder() {
+  const clientId = $('orderClientSelect').value;
+  if (!clientId) return warn('خطأ', 'اختر الزبون');
+  const items = currentOrderItems.filter(it => it.name && it.name.trim());
+  if (!items.length) return warn('خطأ', 'أضف صنفاً واحداً على الأقل');
+
+  const client = state.clients.find(c => c.id === clientId);
+  const dueDate = $('orderDueDate').value;
+  const dueTime = $('orderDueTime').value;
+  const notes = $('orderNotes').value.trim();
+  const total = sumList(items, it => calcLineTotal(it.price, it.qty));
+  const editId = $('orderEditId').value;
+
+  if (editId) {
+    const order = state.orders.find(o => o.id === editId);
+    if (!order) return;
+    Object.assign(order, { clientId, clientName: client.name, items, total, dueDate, dueTime, notes });
+    logAudit('تعديل طلب', `${client.name} - ${items.length} صنف`);
+  } else {
+    state.orders.push({
+      id: 'ORD-' + Date.now(),
+      clientId, clientName: client.name, clientPhone: client.phone || '',
+      items, total, notes, dueDate, dueTime,
+      status: 'pending', createdAt: Date.now(), deliveredAt: null
+    });
+    logAudit('طلب جديد', `${client.name} - ${items.length} صنف - ${dueDate} ${dueTime}`);
+  }
+
+  const ok = await saveToStorage();
+  if (!ok) return;
+  closeModal('orderModal');
+  renderOrders();
+  updateOrdersBadge();
+  toast('تم حفظ الطلب');
+}
+
+function updateOrdersBadge() {
+  if (!Array.isArray(state.orders)) state.orders = [];
+  const pending = state.orders.filter(o => o.status === 'pending').length;
+  const badge = $('ordersBadge');
+  if (!badge) return;
+  if (pending > 0) { badge.textContent = pending; badge.classList.remove('hidden'); }
+  else badge.classList.add('hidden');
+}
+
+function renderOrders() {
+  const grid = $('ordersGrid');
+  if (!grid) return;
+  if (!Array.isArray(state.orders)) state.orders = [];
+
+  const pending = state.orders.filter(o => o.status === 'pending').sort((a, b) => {
+    const dateA = (a.dueDate || '9999-12-31') + ' ' + (a.dueTime || '23:59');
+    const dateB = (b.dueDate || '9999-12-31') + ' ' + (b.dueTime || '23:59');
+    return dateA.localeCompare(dateB);
+  });
+
+  if (!pending.length) {
+    grid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400 text-sm font-bold bg-white rounded-2xl border border-dashed"><i class="fa-solid fa-clipboard-check text-4xl opacity-30 mb-2 block"></i>لا توجد طلبات قيد التنفيذ</div>`;
+    return;
+  }
+
+  const now = new Date();
+  grid.innerHTML = pending.map((order, idx) => {
+    let dueStatus = 'future', dueStatusLabel = 'مجدول';
+    if (order.dueDate) {
+      const dueStr = order.dueDate + (order.dueTime ? 'T' + order.dueTime : 'T23:59');
+      const due = new Date(dueStr);
+      const diffMs = due - now;
+      const diffHours = diffMs / (1000 * 60 * 60);
+      if (diffMs < 0) { dueStatus = 'overdue'; dueStatusLabel = 'متأخر'; }
+      else if (diffHours < 2) { dueStatus = 'soon'; dueStatusLabel = 'قريباً جداً'; }
+    }
+
+    const borderColor = { overdue: 'border-rose-400 bg-rose-50', soon: 'border-amber-400 bg-amber-50', future: 'border-slate-200 bg-white' }[dueStatus];
+    const badgeColor = { overdue: 'bg-rose-600 text-white', soon: 'bg-amber-500 text-white', future: 'bg-emerald-600 text-white' }[dueStatus];
+
+    return `<div class="rounded-2xl border-2 ${borderColor} p-4 shadow-sm flex flex-col gap-2">
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <div class="flex items-center gap-1.5 mb-1">
+            ${idx === 0 ? '<span class="text-[10px] bg-ashour text-white px-2 py-0.5 rounded-full font-bold">التالي</span>' : ''}
+            <span class="text-[10px] ${badgeColor} px-2 py-0.5 rounded-full font-bold">${dueStatusLabel}</span>
+          </div>
+          <h4 class="font-bold text-lg text-slate-800">${esc(order.clientName)}</h4>
+          ${order.dueDate ? `<p class="text-xs text-slate-600 font-semibold num-tabular"><i class="fa-solid fa-clock"></i> ${esc(order.dueDate)}${order.dueTime ? ' — الساعة ' + esc(order.dueTime) : ''}</p>` : ''}
+        </div>
+        <div class="text-left">
+          <div class="text-xs text-slate-500 font-bold">الإجمالي</div>
+          <div class="text-base font-bold text-ashour num-tabular">${fmtCur(order.total)}</div>
+        </div>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-lg p-2 text-xs font-semibold max-h-32 overflow-y-auto">
+        ${order.items.map(it => `<div class="flex justify-between py-0.5"><span>${esc(it.name)}</span><span class="num-tabular">${fmt(it.qty)} × ${fmtCur(it.price)}</span></div>`).join('')}
+      </div>
+      ${order.notes ? `<p class="text-xs text-slate-600 italic">📝 ${esc(order.notes)}</p>` : ''}
+      <div class="flex gap-1.5 flex-wrap">
+        <button onclick="deliverOrder('${esc(order.id)}')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg font-bold text-xs"><i class="fa-solid fa-check"></i> تم التوصيل</button>
+        <button onclick="convertOrderToInvoice('${esc(order.id)}')" class="flex-1 bg-ashour hover:bg-ashour-dark text-white py-2 rounded-lg font-bold text-xs"><i class="fa-solid fa-cash-register"></i> تحويل لفاتورة</button>
+        <button onclick="openOrderModal('${esc(order.id)}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-2 rounded-lg text-xs font-bold"><i class="fa-solid fa-pen"></i></button>
+        <button onclick="cancelOrder('${esc(order.id)}')" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-2.5 py-2 rounded-lg text-xs font-bold"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function deliverOrder(orderId) {
+  const order = state.orders.find(o => o.id === orderId);
+  if (!order) return;
+  const res = await Swal.fire({
+    title: 'تم التوصيل؟', text: `سيتم تحويل الطلب إلى "تم التسليم" وحذفه من قائمة الانتظار.`,
+    icon: 'question', showCancelButton: true, confirmButtonColor: '#10b981', cancelButtonColor: '#64748b',
+    confirmButtonText: 'نعم، تم التوصيل', cancelButtonText: 'إلغاء'
+  });
+  if (!res.isConfirmed) return;
+  const prevStatus = order.status, prevDeliveredAt = order.deliveredAt;
+  order.status = 'delivered';
+  order.deliveredAt = Date.now();
+  logAudit('تسليم طلب', `${order.clientName} - ${fmtCur(order.total)}`);
+  const ok = await saveToStorage();
+  if (!ok) { order.status = prevStatus; order.deliveredAt = prevDeliveredAt; return; }
+  renderOrders();
+  updateOrdersBadge();
+  toast('تم تسليم الطلب');
+}
+
+async function cancelOrder(orderId) {
+  const order = state.orders.find(o => o.id === orderId);
+  if (!order) return;
+  const res = await Swal.fire({
+    title: 'إلغاء الطلب؟', text: 'سيتم حذف الطلب نهائياً.',
+    icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#64748b',
+    confirmButtonText: 'نعم، إلغاء', cancelButtonText: 'تراجع'
+  });
+  if (!res.isConfirmed) return;
+  const removed = { ...order };
+  state.orders = state.orders.filter(o => o.id !== orderId);
+  logAudit('إلغاء طلب', `${order.clientName} - ${fmtCur(order.total)}`);
+  const ok = await saveToStorage();
+  if (!ok) { state.orders.push(removed); return; }
+  renderOrders();
+  updateOrdersBadge();
+  toast('تم إلغاء الطلب');
+}
+
+// ✅ إصلاح: إغلاق الطلب بعد التحويل لفاتورة (لتجنب التحويل المزدوج)
+async function convertOrderToInvoice(orderId) {
+  const order = state.orders.find(o => o.id === orderId);
+  if (!order) return;
+  state.cart = order.items.map(it => {
+    const product = state.products.find(p => normalizeArabic(p.name) === normalizeArabic(it.name));
+    if (product) return { productId: product.id, qty: toNum(it.qty) };
+    return { isQuickOnly: true, quickId: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5), name: it.name, price: toNum(it.price), qty: toNum(it.qty) };
+  });
+  const client = state.clients.find(c => c.id === order.clientId);
+  if (client) {
+    $('posClientSelect').value = client.id;
+    $('selectedClientText').textContent = client.name;
+  }
+  switchTab('pos');
+  renderCart();
+
+  // إغلاق الطلب بعد التحويل
+  order.status = 'delivered';
+  order.deliveredAt = Date.now();
+  await saveToStorage();
+  renderOrders();
+  updateOrdersBadge();
+
+  toast(`تم تحويل الطلب إلى فاتورة (${order.clientName})`);
+}
+
 function renderAll(opts = {}) {
   const skip = Array.isArray(opts.skip) ? opts.skip : [];
   const should = n => !skip.includes(n);
@@ -2407,6 +2874,7 @@ function renderAll(opts = {}) {
   if (should('audit')) renderAuditLog();
   if (should('purchases')) renderPurchases();
   if (should('debts')) renderPersonDebts();
+  if (should('orders')) { renderOrders(); updateOrdersBadge(); } // ✅ إضافة الطلبات
 
   if (state.currentLedgerClientId && !$('view-client-detail').classList.contains('hidden')) {
     renderClientSpecialPrices(state.currentLedgerClientId);
@@ -2419,8 +2887,15 @@ window.addEventListener('DOMContentLoaded', async function () {
   refreshCategoryWidgets();
   initPOSCategories();
   loadStoreInfoToSettings();
+
+  // ✅ إضافة منتجات البسكويت تلقائياً
+  await ensureCookieProducts();
+
   renderAll();
   switchDebtTab(currentDebtTab || 'take');
+
+  if ($('currencyToggleBtn')) $('currencyToggleBtn').textContent = state.displayCurrency;
+  if ($('currencyToggleBtnDesktop')) $('currencyToggleBtnDesktop').textContent = state.displayCurrency;
 
   if (window.FireSync && typeof window.FireSync.init === 'function') {
     window.FireSync.init();
