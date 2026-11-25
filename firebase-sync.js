@@ -38,7 +38,7 @@ const FireSync = {
 
     const arrayKeys = [
       'products','clients','invoices','expenses','payments','returns',
-      'directSales','noInvoiceItems','companies','purchases','companyPayments','personDebts'
+      'directSales','noInvoiceItems','companies','purchases','companyPayments','personDebts','orders'
     ];
 
     arrayKeys.forEach((key) => {
@@ -154,12 +154,14 @@ const FireSync = {
       await window.firebaseSignIn(window.firebaseAuth, window.googleProvider);
     } catch (error) {
       console.error('Login failed:', error);
-      if (typeof Swal !== 'undefined') {
-        const msg = error && error.code === 'auth/popup-blocked'
-          ? 'المتصفح منع النافذة المنبثقة. اسمح بالنوافذ المنبثقة.'
-          : 'فشل تسجيل الدخول. تأكد من النطاق.';
-        Swal.fire('خطأ', msg, 'error');
-      }
+      if (typeof Swal === 'undefined') return;
+      let msg = 'فشل تسجيل الدخول.';
+      if (error.code === 'auth/popup-blocked') msg = 'المتصفح منع النافذة المنبثقة. اسمح بها من إعدادات المتصفح.';
+      else if (error.code === 'auth/unauthorized-domain') msg = `النطاق (${location.hostname}) غير مصرّح به في Firebase. أضفه من Firebase Console → Authentication → Settings → Authorized Domains.`;
+      else if (error.code === 'auth/cancelled-popup-request') return;
+      else if (error.code === 'auth/network-request-failed') msg = 'تحقق من اتصال الإنترنت.';
+      else if (error.code === 'auth/operation-not-allowed') msg = 'تسجيل الدخول بـ Google غير مفعّل في Firebase Console → Authentication → Sign-in method.';
+      Swal.fire('خطأ في تسجيل الدخول', msg, 'error');
     }
   },
 
@@ -187,8 +189,6 @@ const FireSync = {
     try {
       const stamp = Date.now();
       const payload = { ...JSON.parse(JSON.stringify(data)), lastUpdated: stamp };
-      
-      // 🔒 حماية أمنية: منع رفع بيانات PIN للسحابة
       delete payload.pinHash;
       delete payload.pinSalt;
       delete payload.pinAttempts;
