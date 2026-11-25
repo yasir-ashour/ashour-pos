@@ -230,7 +230,6 @@ tailwind.config = {
         </div>
       </div>
 
-      <!-- أزرار الموبايل -->
       <div class="flex md:hidden items-center gap-1 shrink-0">
         <button type="button" onclick="toggleCurrency()" id="currencyToggleBtn" class="bg-amber-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-sm" title="تبديل العملة">SYP</button>
         <button type="button" onclick="exportDataBackup()" class="bg-emerald-500 px-2.5 py-1.5 rounded-lg text-xs font-bold" title="نسخة احتياطية"><i class="fa-solid fa-cloud-arrow-down"></i></button>
@@ -240,6 +239,10 @@ tailwind.config = {
 
     <nav class="flex items-center gap-1 overflow-x-auto py-1 text-sm font-semibold w-full md:w-auto justify-start" style="scrollbar-width: none;">
       <button onclick="switchTab('pos')" id="tab-pos" class="tab-btn active bg-white/20 px-3 py-1.5 rounded-lg whitespace-nowrap"><i class="fa-solid fa-cash-register"></i> الكاشير</button>
+      <button onclick="switchTab('orders')" id="tab-orders" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap relative">
+        <i class="fa-solid fa-clipboard-list"></i> الطلبات
+        <span id="ordersBadge" class="hidden absolute -top-1 -left-1 bg-amber-500 text-white text-[9px] rounded-full px-1.5 py-0.5 font-bold min-w-[18px] text-center">0</span>
+      </button>
       <button onclick="switchTab('invoices')" id="tab-invoices" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap"><i class="fa-solid fa-file-invoice"></i> المبيعات</button>
       <button onclick="switchTab('purchases')" id="tab-purchases" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap"><i class="fa-solid fa-cart-flatbed"></i> المشتريات</button>
       <button onclick="switchTab('products')" id="tab-products" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap"><i class="fa-solid fa-box"></i> المنتجات</button>
@@ -282,12 +285,11 @@ tailwind.config = {
           <button onclick="openDirectSaleModal()" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap"><i class="fa-solid fa-bag-shopping"></i> بيع سريع</button>
           <button onclick="openQuickProductModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap"><i class="fa-solid fa-bolt"></i> منتج سريع</button>
         </div>
-        
-        <!-- أزرار البسكويت السريعة -->
+
         <div class="flex gap-1.5 overflow-x-auto py-1">
-          <button onclick="addQuickCookie(200)" class="bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap hover:bg-amber-200 transition"><i class="fa-solid fa-cookie"></i> بسكويت 200</button>
-          <button onclick="addQuickCookie(300)" class="bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap hover:bg-amber-200 transition"><i class="fa-solid fa-cookie"></i> بسكويت 300</button>
-          <button onclick="addQuickCookie(500)" class="bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap hover:bg-amber-200 transition"><i class="fa-solid fa-cookie"></i> بسكويت 500</button>
+          <button onclick="addCookieProduct(200)" class="bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap hover:bg-amber-200 transition"><i class="fa-solid fa-cookie"></i> بسكويت 200</button>
+          <button onclick="addCookieProduct(300)" class="bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap hover:bg-amber-200 transition"><i class="fa-solid fa-cookie"></i> بسكويت 300</button>
+          <button onclick="addCookieProduct(500)" class="bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap hover:bg-amber-200 transition"><i class="fa-solid fa-cookie"></i> بسكويت 500</button>
         </div>
 
         <div id="posCategoryFilter" class="flex gap-2 overflow-x-auto pb-1 lg:hidden w-full" style="scrollbar-width: none;"></div>
@@ -387,6 +389,20 @@ tailwind.config = {
     </div>
   </div>
 
+  <!-- ================= الطلبات ================= -->
+  <div id="view-orders" class="tab-view hidden space-y-3">
+    <div class="bg-white p-3 rounded-2xl border shadow-sm">
+      <div class="flex justify-between items-center flex-wrap gap-2">
+        <div>
+          <h2 class="text-xl font-bold text-ashour"><i class="fa-solid fa-clipboard-list text-ashour-gold"></i> قائمة الطلبات</h2>
+          <p class="text-xs text-slate-500">الطلبات قيد التنفيذ مرتبة حسب الأقرب للاستلام</p>
+        </div>
+        <button onclick="openOrderModal()" class="bg-ashour hover:bg-ashour-dark text-white font-bold text-sm px-4 py-2 rounded-xl"><i class="fa-solid fa-plus"></i> طلب جديد</button>
+      </div>
+    </div>
+    <div id="ordersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+  </div>
+
   <!-- ================= المبيعات ================= -->
   <div id="view-invoices" class="tab-view hidden space-y-3">
     <div class="bg-white p-3 rounded-2xl border shadow-sm space-y-3">
@@ -394,8 +410,7 @@ tailwind.config = {
         <div><h2 class="text-xl font-bold text-ashour">سجل المبيعات والعمليات</h2></div>
         <div class="flex flex-wrap gap-2 w-full md:w-auto">
           <input type="text" id="invoiceSearchInput" oninput="debouncedRenderInvoicesTable()" placeholder="ابحث برقم العملية أو الزبون..." class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold w-full sm:w-56">
-          
-          <!-- قائمة مخصصة لتفادي الشكل الأسود -->
+
           <div class="relative min-w-[160px] w-full sm:w-auto">
             <button type="button" onclick="document.getElementById('invoiceStatusDropdownList').classList.toggle('hidden')" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold text-right flex justify-between items-center shadow-sm">
               <span id="selectedInvoiceStatusText">جميع الحالات</span>
@@ -958,8 +973,18 @@ tailwind.config = {
     <div class="space-y-3 text-sm font-bold num-tabular">
       <div><label class="block mb-1">اسم الشخص:</label><input type="text" id="debtPersonName" class="w-full bg-slate-50 border rounded-xl p-2.5"></div>
       <div><label class="block mb-1">الهاتف:</label><input type="text" id="debtPersonPhone" class="w-full bg-slate-50 border rounded-xl p-2.5"></div>
-      <div><label class="block mb-1">نوع الدين:</label>
-        <select id="debtPersonType" class="w-full"><option value="take">لي</option><option value="give">له</option></select>
+      <div>
+        <label class="block mb-1">نوع الدين:</label>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="flex items-center gap-2 p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl cursor-pointer">
+            <input type="radio" name="debtTypeRadio" value="take" checked>
+            <span>لي (مستحق لي)</span>
+          </label>
+          <label class="flex items-center gap-2 p-2.5 bg-rose-50 border border-rose-300 rounded-xl cursor-pointer">
+            <input type="radio" name="debtTypeRadio" value="give">
+            <span>له (مستحق عليّ)</span>
+          </label>
+        </div>
       </div>
       <div><label class="block mb-1">المبلغ:</label><input type="number" step="any" id="debtPersonAmount" class="w-full bg-slate-50 border rounded-xl p-2.5"></div>
       <div><label class="block mb-1">ملاحظات:</label><input type="text" id="debtPersonNotes" class="w-full bg-slate-50 border rounded-xl p-2.5"></div>
@@ -1017,6 +1042,40 @@ tailwind.config = {
     <div class="flex gap-2 pt-2">
       <button onclick="saveClient()" class="flex-1 bg-ashour text-white py-2.5 rounded-xl font-bold text-sm">حفظ</button>
       <button onclick="closeModal('clientModal')" class="bg-slate-200 text-slate-700 py-2.5 px-4 rounded-xl font-bold text-sm">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div id="orderModal" onclick="if(event.target===this)closeModal('orderModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4 modal-anim max-h-[90vh] overflow-y-auto">
+    <h3 class="text-lg font-bold text-ashour"><i class="fa-solid fa-clipboard-list"></i> طلب جديد</h3>
+    <input type="hidden" id="orderEditId">
+    <div class="space-y-3 text-sm font-bold num-tabular">
+      <div>
+        <label class="block mb-1">الزبون:</label>
+        <div class="relative">
+          <button type="button" onclick="toggleOrderClientDropdown()" class="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-right flex justify-between items-center">
+            <span id="orderSelectedClientText">اختر الزبون</span>
+            <i class="fa-solid fa-chevron-down text-slate-400 text-[10px]"></i>
+          </button>
+          <div id="orderClientDropdownList" class="hidden absolute top-full right-0 left-0 mt-1 bg-white border border-slate-300 rounded-xl shadow-xl z-30 max-h-48 overflow-y-auto divide-y divide-slate-100"></div>
+        </div>
+        <input type="hidden" id="orderClientSelect">
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div><label class="block mb-1">التاريخ:</label><input type="date" id="orderDueDate" class="w-full"></div>
+        <div><label class="block mb-1">الوقت:</label><input type="time" id="orderDueTime" class="w-full"></div>
+      </div>
+      <div>
+        <label class="block mb-1">الأصناف:</label>
+        <div id="orderItemsList" class="space-y-2"></div>
+        <button type="button" onclick="addOrderItem()" class="mt-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold"><i class="fa-solid fa-plus"></i> إضافة صنف</button>
+      </div>
+      <div><label class="block mb-1">ملاحظات:</label><textarea id="orderNotes" rows="2" class="w-full bg-slate-50 border rounded-xl p-2.5"></textarea></div>
+    </div>
+    <div class="flex gap-2 pt-2">
+      <button onclick="saveOrder()" class="flex-1 bg-ashour text-white py-2.5 rounded-xl font-bold text-sm">حفظ الطلب</button>
+      <button onclick="closeModal('orderModal')" class="bg-slate-200 text-slate-700 py-2.5 px-4 rounded-xl font-bold text-sm">إلغاء</button>
     </div>
   </div>
 </div>
