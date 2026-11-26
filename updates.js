@@ -1,10 +1,85 @@
-/* updates.js — تصميم داكن + QR + PDF + reset PIN + نسخة تلقائية + تشفير */
+/* updates.js — تصميم داكن + QR + PDF + reset PIN + نسخة تلقائية + تشفير + قفل دخول */
 (function () {
   'use strict';
 
+  const SITE_PASSCODE = '1234';
+  const AUTH_SESSION_KEY = 'ashour_site_unlocked_v1';
   const params = new URLSearchParams(location.search);
 
+  function lockSiteAccess() {
+    sessionStorage.removeItem(AUTH_SESSION_KEY);
+    showSiteLoginGate();
+  }
+
+  function showSiteLoginGate() {
+    if (document.getElementById('sitePasscodeOverlay')) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'sitePasscodeOverlay';
+    overlay.style.cssText = [
+      'position:fixed',
+      'inset:0',
+      'z-index:99999',
+      'background:linear-gradient(180deg,#0F2D3D 0%,#0A1E2A 100%)',
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+      'padding:16px',
+      'font-family:inherit',
+      'direction:rtl'
+    ].join(';');
+
+    overlay.innerHTML = `
+      <div style="width:100%;max-width:360px;background:#ffffff;border-radius:18px;padding:24px;box-shadow:0 20px 45px rgba(0,0,0,0.35);text-align:center;">
+        <div style="width:52px;height:52px;margin:0 auto 12px;border-radius:14px;background:#14B8A6;color:#ffffff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;">
+          <i class="fa-solid fa-lock"></i>
+        </div>
+        <h2 style="margin:0 0 6px;font-size:18px;font-weight:800;color:#0F2D3D;">تسجيل الدخول إلى الموقع</h2>
+        <p style="margin:0 0 16px;font-size:13px;color:#475569;">أدخل رمز الدخول للمتابعة</p>
+        <form id="sitePasscodeForm">
+          <input
+            id="sitePasscodeInput"
+            type="password"
+            inputmode="numeric"
+            autocomplete="current-password"
+            placeholder="••••"
+            style="width:100%;box-sizing:border-box;padding:12px 14px;font-size:20px;letter-spacing:8px;text-align:center;border:2px solid #CBD5E1;border-radius:12px;outline:none;color:#0F2D3D;font-weight:700;"
+          />
+          <div id="sitePasscodeError" style="min-height:20px;margin-top:8px;font-size:12px;font-weight:700;color:#DC2626;"></div>
+          <button
+            type="submit"
+            style="width:100%;margin-top:6px;padding:11px 14px;border:none;border-radius:12px;background:#0F2D3D;color:#ffffff;font-size:14px;font-weight:800;cursor:pointer;"
+          >
+            دخول
+          </button>
+        </form>
+      </div>
+    `;
+
+    document.documentElement.appendChild(overlay);
+
+    const form = overlay.querySelector('#sitePasscodeForm');
+    const input = overlay.querySelector('#sitePasscodeInput');
+    const errorEl = overlay.querySelector('#sitePasscodeError');
+
+    setTimeout(() => input && input.focus(), 50);
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const entered = (input.value || '').trim();
+      if (entered === SITE_PASSCODE) {
+        sessionStorage.setItem(AUTH_SESSION_KEY, '1');
+        overlay.remove();
+      } else {
+        errorEl.textContent = 'رمز الدخول غير صحيح';
+        input.value = '';
+        input.focus();
+      }
+    });
+  }
+
   if (params.get('resetpin') === 'ashour2026') {
+    sessionStorage.removeItem(AUTH_SESSION_KEY);
     const tryReset = () => {
       if (typeof state === 'object' && state && typeof state.pinHash !== 'undefined') {
         state.pinHash = null; state.pinSalt = null;
@@ -19,6 +94,14 @@
     };
     setTimeout(tryReset, 400);
     return;
+  }
+
+  if (sessionStorage.getItem(AUTH_SESSION_KEY) !== '1') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', showSiteLoginGate, { once: true });
+    } else {
+      showSiteLoginGate();
+    }
   }
 
   if (params.get('statement')) {
@@ -354,5 +437,6 @@
     }
   }, 800);
 
+  window.lockSiteAccess = lockSiteAccess;
   console.log('%c[updates.js] التحديثات جاهزة ✓', 'color:#14B8A6;font-weight:bold;font-size:13px');
 })();
