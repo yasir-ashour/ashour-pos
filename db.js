@@ -1,22 +1,20 @@
 /* ==========================================================================
    db.js — محرك التخزين (IndexedDB + نسخة احتياطية في localStorage)
-   نفس الواجهة العامة السابقة (AshourDB.save / load / saveBackup / getStatus /
-   testCapacity / addAudit) مع إصلاحات داخلية.
    ========================================================================== */
 
 (function (global) {
   'use strict';
 
   const DB_NAME = 'ashour_pos_db';
-  const DB_VERSION = 2;                    // كان 1: أُضيف مخزن audit_log
+  const DB_VERSION = 2;
   const STORE_MAIN = 'main';
   const STORE_BACKUP = 'backup';
-  const STORE_AUDIT = 'audit_log';         // المخزن القديم 'audit' كان لا يعمل (يبقى فارغاً ولا نلمسه)
+  const STORE_AUDIT = 'audit_log';
   const LS_KEY = 'ashour_pos_db_v12';
-  const LS_BACKUP_KEY = 'ashour_pos_db_v12_mirror';   // قديم: نقرأ منه فقط ونحذفه عند أول حفظ ناجح
-  const LS_MAX_CHARS = 2000000;            // لا نكتب في localStorage إن كانت البيانات أكبر من ذلك
-  const BACKUP_MIN_GAP_MS = 12 * 60 * 60 * 1000;   // نسخة داخلية كل 12 ساعة كحد أدنى
-  const BACKUP_KEEP = 14;                  // نحو 7 أيام
+  const LS_BACKUP_KEY = 'ashour_pos_db_v12_mirror';
+  const LS_MAX_CHARS = 2000000;
+  const BACKUP_MIN_GAP_MS = 12 * 60 * 60 * 1000;
+  const BACKUP_KEEP = 14;
 
   let _db = null;
 
@@ -34,7 +32,6 @@
       };
       req.onsuccess = (ev) => {
         _db = ev.target.result;
-        // عند ترقية القاعدة من نافذة أخرى أو إغلاقها من النظام: أغلق الاتصال وأعد فتحه لاحقاً
         _db.onversionchange = () => { try { _db.close(); } catch (_) {} _db = null; };
         _db.onclose = () => { _db = null; };
         resolve(_db);
@@ -44,8 +41,6 @@
     });
   }
 
-  // ينفّذ عملية على القاعدة، ويعيد المحاولة مرة واحدة إن كان الاتصال مغلقاً
-  // (يحدث على بعض أجهزة iPhone بعد عودة التطبيق من الخلفية)
   async function run(fn) {
     try {
       return await fn(await openDB());
@@ -58,7 +53,6 @@
     }
   }
 
-  // key == null → إضافة بمفتاح تلقائي (مخزن audit_log)
   function put(storeName, key, value) {
     return run((db) => new Promise((resolve, reject) => {
       const tx = db.transaction(storeName, 'readwrite');
@@ -66,7 +60,6 @@
       if (key == null) store.add(value); else store.put(value, key);
       tx.oncomplete = () => resolve(true);
       tx.onerror = (ev) => reject(ev.target.error);
-      // مهم: عند فشل الالتزام (مساحة ممتلئة مثلاً) يُطلق abort فقط، وبدونه يعلق الوعد للأبد
       tx.onabort = () => reject(tx.error || new Error('تم إلغاء عملية التخزين'));
     }));
   }
@@ -103,14 +96,13 @@
         okIndexedDB = true;
       } catch (e) { errors.push('IndexedDB: ' + e.message); }
 
-      // localStorage: نسخة واحدة فقط (كانت نسختين متطابقتين)، وللحجم المعقول فقط
       try {
         const json = JSON.stringify(state);
         if (json.length <= LS_MAX_CHARS || !okIndexedDB) {
           localStorage.setItem(LS_KEY, json);
           okLocalStorage = true;
         } else {
-          localStorage.removeItem(LS_KEY);   // كبيرة: لا نترك نسخة قديمة قد تُستعاد بالخطأ
+          localStorage.removeItem(LS_KEY);
         }
         if (okIndexedDB) localStorage.removeItem(LS_BACKUP_KEY);
       } catch (e) { errors.push('localStorage: ' + e.message); }
@@ -118,7 +110,6 @@
       return { ok: okIndexedDB || okLocalStorage, okIndexedDB, okLocalStorage, errors };
     },
 
-    // تُستدعى من مؤقّت التطبيق كل 5 دقائق، لكن النسخة الفعلية لا تُؤخذ إلا كل 12 ساعة
     async saveBackup(state) {
       try {
         const keys = await run((db) => new Promise((resolve, reject) => {
@@ -155,7 +146,6 @@
       } catch (_) {}
     },
 
-    // يطلب من المتصفح عدم مسح بيانات التطبيق عند امتلاء الجهاز
     async requestPersistence() {
       try {
         if (navigator.storage && navigator.storage.persist) {
@@ -167,7 +157,7 @@
     },
 
     async load() {
-      this.requestPersistence();   // بلا انتظار
+      this.requestPersistence();
       let readFailed = false;
 
       try {
@@ -194,7 +184,6 @@
         }
       } catch (_) { readFailed = true; }
 
-      // error=true يعني أن القراءة فشلت (وليس أن البيانات غير موجودة): لا يجوز الكتابة فوق القاعدة
       return { ok: false, state: null, error: readFailed };
     },
 
@@ -222,19 +211,18 @@
     },
 
     async testCapacity() {
-  const start = performance.now();
-  const fake = { invoices: [], products: [], clients: [] };
-  // تم تخفيف العدد من 5000 إلى 300 لتجنب تجميد الأجهزة القديمة
-  for (let i = 0; i < 300; i++) fake.invoices.push({ id: 'TEST-' + i, ts: Date.now(), clientId: 'c1', clientName: 'اختبار', total: Math.random() * 100000, paid: 0, remaining: 0, items: [{ name: 'منتج اختبار', qty: 1, price: 100, total: 100 }] });
-  for (let i = 0; i < 100; i++) fake.products.push({ id: String(i), sku: String(i), name: 'منتج ' + i, cost: 100, retailPrice: 150, wholesalePrice: 130 });
-  const payload = { test: fake, ts: Date.now() };
-  const sizeKB = Math.round(new Blob([JSON.stringify(payload)]).size / 1024);
-  let okIDB = false, okLS = false, err = null;
-  try { await put(STORE_MAIN, 'capacity_test', payload); okIDB = true; await del(STORE_MAIN, 'capacity_test'); } catch (e) { err = 'IndexedDB: ' + e.message; }
-  try { const k = '__capacity_test__'; localStorage.setItem(k, JSON.stringify(payload)); localStorage.removeItem(k); okLS = true; } catch (e) { err = (err || '') + ' localStorage: ' + e.message; }
-  return { ok: okIDB || okLS, okIDB, okLS, sizeKB, ms: Math.round(performance.now() - start), error: err };
-}
-    // سجل التدقيق الدائم (لا يُقصّ عند 500 كما في state.auditLog)
+      const start = performance.now();
+      const fake = { invoices: [], products: [], clients: [] };
+      for (let i = 0; i < 300; i++) fake.invoices.push({ id: 'TEST-' + i, ts: Date.now(), clientId: 'c1', clientName: 'اختبار', total: Math.random() * 100000, paid: 0, remaining: 0, items: [{ name: 'منتج اختبار', qty: 1, price: 100, total: 100 }] });
+      for (let i = 0; i < 100; i++) fake.products.push({ id: String(i), sku: String(i), name: 'منتج ' + i, cost: 100, retailPrice: 150, wholesalePrice: 130 });
+      const payload = { test: fake, ts: Date.now() };
+      const sizeKB = Math.round(new Blob([JSON.stringify(payload)]).size / 1024);
+      let okIDB = false, okLS = false, err = null;
+      try { await put(STORE_MAIN, 'capacity_test', payload); okIDB = true; await del(STORE_MAIN, 'capacity_test'); } catch (e) { err = 'IndexedDB: ' + e.message; }
+      try { const k = '__capacity_test__'; localStorage.setItem(k, JSON.stringify(payload)); localStorage.removeItem(k); okLS = true; } catch (e) { err = (err || '') + ' localStorage: ' + e.message; }
+      return { ok: okIDB || okLS, okIDB, okLS, sizeKB, ms: Math.round(performance.now() - start), error: err };
+    },
+
     async addAudit(entry) {
       try { await put(STORE_AUDIT, null, entry); } catch (_) {}
     },
