@@ -1,16 +1,13 @@
 // sw.js — مركز عاشور POS
-// غيّر VERSION عند تعديل قوائم الملفات أدناه (تعديل app.js وحده لا يحتاج ذلك)
-const VERSION = 'v12';
+const VERSION = 'v13';
 const CACHE_NAME = 'ashour-pos-' + VERSION;
 const NETWORK_TIMEOUT_MS = 4000;
 
-// ملفات التطبيق (نفس النطاق)
 const CORE_ASSETS = [
   './', './index.html', './app.js', './db.js', './firebase-sync.js', './ashour-fixes.js',
   './manifest.json', './icon-192.png', './icon-512.png', './maskable-512.png', './icon.svg'
 ];
 
-// مكتبات خارجية يحتاجها التطبيق ليعمل بدون إنترنت (نفس الروابط الموجودة في index.html)
 const CDN_ASSETS = [
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/sweetalert2@11',
@@ -23,7 +20,6 @@ const CDN_ASSETS = [
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
 ];
 
-// المضيفات المسموح تخزينها. طلبات Firestore وتسجيل الدخول لا تُلمس إطلاقاً.
 const CDN_HOSTS = [
   'cdn.tailwindcss.com', 'cdn.jsdelivr.net', 'unpkg.com',
   'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'
@@ -38,12 +34,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-
-    // كل ملف على حدة: فشل ملف واحد لا يلغي تخزين الباقي
-    await Promise.all(CORE_ASSETS.map((u) =>
-      cache.add(new Request(u, { cache: 'reload' })).catch(() => {})
-    ));
-
+    await Promise.all(CORE_ASSETS.map((u) => cache.add(new Request(u, { cache: 'reload' })).catch(() => {})));
     await Promise.all(CDN_ASSETS.map(async (u) => {
       try {
         let res = await fetch(u, { mode: 'cors' }).catch(() => null);
@@ -57,26 +48,25 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys
-      .filter((k) => k.startsWith('ashour-pos-') && k !== CACHE_NAME)
-      .map((k) => caches.delete(k)));
+    await Promise.all(keys.filter((k) => k.startsWith('ashour-pos-') && k !== CACHE_NAME).map((k) => caches.delete(k)));
     await self.clients.claim();
   })());
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
 function fetchFresh(req, ms) {
   const ctrl = new AbortController();
   const timer = ms > 0 ? setTimeout(() => ctrl.abort(), ms) : null;
-  return fetch(req, { cache: 'no-cache', signal: ctrl.signal })
-    .finally(() => { if (timer) clearTimeout(timer); });
+  return fetch(req, { cache: 'no-cache', signal: ctrl.signal }).finally(() => { if (timer) clearTimeout(timer); });
 }
 
-// ملفات التطبيق: الشبكة أولاً (لتصلك التحديثات) مع مهلة، وإلا النسخة المخزنة
 async function networkFirst(req, event) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(req, { ignoreSearch: true });
   try {
-    // إن لم توجد نسخة مخزنة ننتظر الشبكة بلا مهلة
     const res = await fetchFresh(req, cached ? NETWORK_TIMEOUT_MS : 0);
     if (res && res.status === 200) event.waitUntil(cache.put(req, res.clone()));
     return res;
@@ -90,7 +80,6 @@ async function networkFirst(req, event) {
   }
 }
 
-// المكتبات الخارجية: من الكاش فوراً وتُحدَّث في الخلفية
 async function staleWhileRevalidate(req, event) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(req);
@@ -106,11 +95,6 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-
-  if (url.origin === self.location.origin) {
-    event.respondWith(networkFirst(req, event));
-  } else if (isCdn(url)) {
-    event.respondWith(staleWhileRevalidate(req, event));
-  }
-  // أي شيء آخر (Firestore, تسجيل الدخول...) يمر للشبكة كما هو
+  if (url.origin === self.location.origin) event.respondWith(networkFirst(req, event));
+  else if (isCdn(url)) event.respondWith(staleWhileRevalidate(req, event));
 });
