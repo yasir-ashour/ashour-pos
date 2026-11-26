@@ -15,6 +15,8 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@500;600;700&family=Cairo:wght@600;800&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script>
@@ -161,7 +163,6 @@ tailwind.config = {
   .cp-row input { text-align: center; font-weight: 700; font-size: 13px; }
   .cp-row.is-set { background: #F5F0FF; }
 
-  /* شارة المخزون على كرت المنتج */
   .stock-badge {
     position: absolute; top: 6px; left: 6px;
     font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 6px;
@@ -259,7 +260,7 @@ tailwind.config = {
       <button onclick="switchTab('invoices')" id="tab-invoices" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap"><i class="fa-solid fa-file-invoice"></i> المبيعات</button>
       <button onclick="switchTab('purchases')" id="tab-purchases" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap"><i class="fa-solid fa-cart-flatbed"></i> المشتريات</button>
       <button onclick="switchTab('products')" id="tab-products" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap"><i class="fa-solid fa-box"></i> المنتجات</button>
-      <button onclick="switchTab('inventory')" id="tab-inventory" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap">
+      <button onclick="switchTab('inventory')" id="tab-inventory" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap relative">
         <i class="fa-solid fa-warehouse"></i> المخزون
         <span id="inventoryBadge" class="hidden absolute -top-1 -left-1 bg-rose-500 text-white text-[9px] rounded-full px-1.5 py-0.5 font-bold min-w-[18px] text-center">0</span>
       </button>
@@ -555,13 +556,11 @@ tailwind.config = {
 
     <div id="inventorySummary" class="grid grid-cols-2 md:grid-cols-5 gap-2 text-center text-sm font-bold num-tabular"></div>
 
-    <!-- تبويبات فرعية -->
     <div class="flex gap-2 bg-white p-2 rounded-2xl border shadow-sm">
       <button id="invSubTabProducts" onclick="switchInventorySubTab('products')" class="flex-1 px-4 py-2 rounded-xl bg-ashour text-white font-bold text-sm transition"><i class="fa-solid fa-boxes-stacked"></i> المنتجات</button>
       <button id="invSubTabMovements" onclick="switchInventorySubTab('movements')" class="flex-1 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-sm transition"><i class="fa-solid fa-right-left"></i> حركات المخزون</button>
     </div>
 
-    <!-- لوحة المنتجات -->
     <div id="inventoryProductsPanel" class="space-y-3">
       <div class="bg-white p-3 rounded-2xl border flex flex-wrap gap-2 items-center">
         <input type="text" id="invSearch" oninput="debouncedRenderInventoryTable()" placeholder="بحث بالاسم أو الكود..." class="bg-slate-50 border rounded-xl px-3 py-2 text-sm font-semibold w-full md:w-64">
@@ -593,7 +592,6 @@ tailwind.config = {
       </div>
     </div>
 
-    <!-- لوحة الحركات -->
     <div id="inventoryMovementsPanel" class="hidden space-y-3">
       <div class="bg-white p-3 rounded-2xl border flex flex-wrap gap-2 items-center">
         <input type="text" id="mvSearch" oninput="debouncedRenderStockMovements()" placeholder="بحث بالمنتج..." class="bg-slate-50 border rounded-xl px-3 py-2 text-sm font-semibold w-full md:w-64">
@@ -1007,7 +1005,6 @@ tailwind.config = {
       </div>
       <div><label class="block mb-1 text-indigo-700">اسم المنتج:</label><input type="text" id="prodNameInput" class="w-full bg-indigo-50 border border-indigo-300 text-indigo-900 rounded-xl p-2.5"></div>
       <div><label class="block mb-1">الفئة:</label><input type="text" id="prodCatInput" list="categoryList" class="w-full bg-slate-50 border rounded-xl p-2.5"></div>
-      <button type="button" id="prodCurBtn" onclick="toggleProdCurrency()" class="w-full bg-amber-100 text-amber-900 border border-amber-300 rounded-xl py-2 text-sm font-bold"></button>
       <div><label class="block mb-1">سعر الشراء (للعلبة):</label><input type="number" step="any" id="prodCostInput" class="w-full bg-slate-50 border rounded-xl p-2.5"></div>
       <div class="grid grid-cols-2 gap-2 bg-amber-50 p-2 rounded-xl border border-amber-200">
         <div><label class="block mb-1 text-emerald-700">سعر التجزئة:</label><input type="number" step="any" id="prodRetailInput" class="w-full border border-emerald-300 text-emerald-900 rounded-xl p-2.5 font-bold"></div>
@@ -1214,7 +1211,6 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- تسوية مخزون -->
 <div id="stockAdjustmentModal" onclick="if(event.target===this)closeModal('stockAdjustmentModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
   <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4 modal-anim">
     <h3 class="text-lg font-bold text-indigo-700"><i class="fa-solid fa-sliders"></i> تسوية المخزون</h3>
@@ -1247,7 +1243,6 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- استلام بضاعة -->
 <div id="receiveStockModal" onclick="if(event.target===this)closeModal('receiveStockModal')" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
   <div class="bg-white rounded-2xl max-w-2xl w-full p-5 shadow-xl space-y-4 modal-anim max-h-[90vh] overflow-y-auto">
     <h3 class="text-lg font-bold text-emerald-700"><i class="fa-solid fa-truck-ramp-box"></i> استلام بضاعة</h3>
@@ -1341,6 +1336,7 @@ tailwind.config = {
 <script src="firebase-sync.js"></script>
 <script src="db.js"></script>
 <script src="app.js"></script>
+<script src="updates.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
@@ -1349,7 +1345,6 @@ tailwind.config = {
   window.addEventListener('load', () => {
     const splash = document.getElementById('ashour-intro');
     if (splash) {
-      // تم تقليل المدة من 2400ms إلى 1200ms لسرعة الدخول
       setTimeout(() => {
         splash.style.opacity = '0';
         splash.style.transform = 'scale(1.05)';
