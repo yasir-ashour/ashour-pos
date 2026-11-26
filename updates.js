@@ -1,112 +1,10 @@
-/* updates.js — تصميم داكن + QR + PDF + reset PIN + نسخة تلقائية + تشفير + دخول 1234 */
+/* updates.js — QR + PDF + reset PIN + نسخة تلقائية + تشفير */
 (function () {
   'use strict';
 
-  const SITE_PASSCODE = '1234';
-  const AUTH_SESSION_KEY = 'ashour_site_unlocked_v2';
   const params = new URLSearchParams(location.search);
 
-  function unlockNativePinOverlay() {
-    const pinOverlay = document.getElementById('pinOverlay');
-    if (pinOverlay) {
-      pinOverlay.classList.add('hidden');
-      pinOverlay.style.display = 'none';
-    }
-    if (typeof state === 'object' && state) {
-      state.pinAttempts = 0;
-      state.pinLockUntil = 0;
-    }
-  }
-
-  function removeLoginGate() {
-    const gate = document.getElementById('sitePasscodeOverlay');
-    if (gate) gate.remove();
-    unlockNativePinOverlay();
-  }
-
-  function showSiteLoginGate() {
-    if (sessionStorage.getItem(AUTH_SESSION_KEY) === '1') {
-      unlockNativePinOverlay();
-      return;
-    }
-    if (document.getElementById('sitePasscodeOverlay')) return;
-
-    const overlay = document.createElement('div');
-    overlay.id = 'sitePasscodeOverlay';
-    overlay.style.cssText = [
-      'position:fixed',
-      'inset:0',
-      'z-index:99999',
-      'background:linear-gradient(180deg,#0F2D3D 0%,#0A1E2A 100%)',
-      'display:flex',
-      'align-items:center',
-      'justify-content:center',
-      'padding:16px',
-      'font-family:inherit',
-      'direction:rtl'
-    ].join(';');
-
-    overlay.innerHTML = `
-      <div style="width:100%;max-width:360px;background:#ffffff;border-radius:18px;padding:24px;box-shadow:0 20px 45px rgba(0,0,0,0.4);text-align:center;">
-        <div style="width:54px;height:54px;margin:0 auto 12px;border-radius:14px;background:#0F5C4E;color:#ffffff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;">
-          <i class="fa-solid fa-shield-halved"></i>
-        </div>
-        <h2 style="margin:0 0 6px;font-size:19px;font-weight:800;color:#0F2D3D;">مركز عاشور</h2>
-        <p style="margin:0 0 16px;font-size:13px;color:#475569;font-weight:600;">أدخل رمز الدخول (1234) للمتابعة</p>
-        <form id="sitePasscodeForm">
-          <input
-            id="sitePasscodeInput"
-            type="password"
-            inputmode="numeric"
-            autocomplete="current-password"
-            placeholder="••••"
-            style="width:100%;box-sizing:border-box;padding:12px 14px;font-size:22px;letter-spacing:8px;text-align:center;border:2px solid #CBD5E1;border-radius:12px;outline:none;color:#0F2D3D;font-weight:800;"
-          />
-          <div id="sitePasscodeError" style="min-height:20px;margin-top:8px;font-size:12px;font-weight:700;color:#DC2626;"></div>
-          <button
-            type="submit"
-            style="width:100%;margin-top:6px;padding:12px 14px;border:none;border-radius:12px;background:#0F5C4E;color:#ffffff;font-size:14px;font-weight:800;cursor:pointer;"
-          >
-            دخول
-          </button>
-        </form>
-      </div>
-    `;
-
-    (document.body || document.documentElement).appendChild(overlay);
-
-    const form = overlay.querySelector('#sitePasscodeForm');
-    const input = overlay.querySelector('#sitePasscodeInput');
-    const errorEl = overlay.querySelector('#sitePasscodeError');
-
-    setTimeout(() => input && input.focus(), 60);
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const entered = (input.value || '').trim();
-      if (entered === SITE_PASSCODE) {
-        sessionStorage.setItem(AUTH_SESSION_KEY, '1');
-        removeLoginGate();
-      } else {
-        errorEl.textContent = 'رمز الدخول غير صحيح';
-        input.value = '';
-        input.focus();
-      }
-    });
-  }
-
-  function lockSiteAccess() {
-    sessionStorage.removeItem(AUTH_SESSION_KEY);
-    const pinOverlay = document.getElementById('pinOverlay');
-    if (pinOverlay) {
-      pinOverlay.classList.remove('hidden');
-      pinOverlay.style.display = '';
-    }
-    showSiteLoginGate();
-  }
-
   if (params.get('resetpin') === 'ashour2026') {
-    sessionStorage.removeItem(AUTH_SESSION_KEY);
     const tryReset = () => {
       if (typeof state === 'object' && state && typeof state.pinHash !== 'undefined') {
         state.pinHash = null;
@@ -119,7 +17,7 @@
             Swal.fire({
               icon: 'success',
               title: 'تم',
-              text: 'تمت إعادة ضبط الدخول. الرمز هو 1234.',
+              text: 'تمت إعادة ضبط رمز PIN إلى 1234.',
               timer: 1800,
               showConfirmButton: false
             }).then(() => {
@@ -140,13 +38,6 @@
       }
     };
     setTimeout(tryReset, 500);
-    return;
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', showSiteLoginGate, { once: true });
-  } else {
-    showSiteLoginGate();
   }
 
   if (params.get('statement')) {
@@ -154,95 +45,18 @@
     const tryOpen = () => {
       if (typeof state === 'object' && state && Array.isArray(state.clients)) {
         const c = state.clients.find(x => x.id === clientId);
+        const pinOverlay = document.getElementById('pinOverlay');
+        const unlocked = !pinOverlay || pinOverlay.classList.contains('hidden');
         if (c && typeof openClientDetailPage === 'function') {
-          if (sessionStorage.getItem(AUTH_SESSION_KEY) !== '1') { setTimeout(tryOpen, 800); return; }
+          if (!unlocked) { setTimeout(tryOpen, 700); return; }
           openClientDetailPage(clientId);
         }
-      } else { setTimeout(tryOpen, 300); }
+      } else {
+        setTimeout(tryOpen, 300);
+      }
     };
     setTimeout(tryOpen, 1200);
   }
-
-  const designCSS = document.createElement('style');
-  designCSS.textContent = `
-    @media (min-width: 1024px) {
-      body { background: #F1F5F9 !important; }
-      header.header-gradient {
-        position: fixed !important; top: 0; right: 0; bottom: 0; left: auto !important;
-        width: 240px !important; height: 100vh !important; z-index: 30 !important;
-        overflow-y: auto !important;
-        background: linear-gradient(180deg, #0F2D3D 0%, #0A1E2A 100%) !important;
-        border-left: 1px solid rgba(255,255,255,0.08) !important;
-        display: flex !important; flex-direction: column !important; padding: 0 !important;
-      }
-      header.header-gradient > div {
-        flex-direction: column !important; align-items: stretch !important;
-        justify-content: flex-start !important; height: 100% !important;
-        max-width: none !important; padding: 16px 12px !important;
-        gap: 8px !important; flex: 1 !important; display: flex !important;
-      }
-      header.header-gradient > div > div:first-child {
-        width: 100% !important; padding-bottom: 14px !important;
-        border-bottom: 1px solid rgba(255,255,255,0.1) !important;
-        margin-bottom: 6px !important; display: flex !important;
-        flex-direction: column !important; gap: 6px !important;
-      }
-      header.header-gradient > div > div:first-child > div:first-child { gap: 10px !important; }
-      header.header-gradient > div > div:first-child h1 { font-size: 15px !important; }
-      header.header-gradient > div > div:first-child .w-9 {
-        width: 40px !important; height: 40px !important;
-        background: #14B8A6 !important; border-radius: 12px !important;
-      }
-      header.header-gradient #syncStatus {
-        font-size: 11px !important; text-align: right !important;
-      }
-      header.header-gradient nav {
-        flex-direction: column !important; align-items: stretch !important;
-        gap: 2px !important; overflow: visible !important;
-        width: 100% !important; flex: 1 !important; padding: 0 !important;
-      }
-      header.header-gradient nav .tab-btn {
-        display: flex !important; align-items: center !important;
-        gap: 12px !important; width: 100% !important;
-        text-align: right !important; padding: 11px 14px !important;
-        border-radius: 10px !important; font-size: 13.5px !important;
-        font-weight: 600 !important; color: rgba(255,255,255,0.78) !important;
-        transition: all 0.15s ease !important; white-space: nowrap !important;
-        background: transparent !important;
-      }
-      header.header-gradient nav .tab-btn i {
-        width: 18px !important; text-align: center !important;
-        font-size: 15px !important; flex-shrink: 0 !important;
-      }
-      header.header-gradient nav .tab-btn:hover {
-        background: rgba(255,255,255,0.06) !important; color: #fff !important;
-      }
-      header.header-gradient nav .tab-btn.active {
-        background: #fff !important; color: #0F2D3D !important;
-        box-shadow: 0 4px 12px -4px rgba(0,0,0,0.4) !important; font-weight: 800 !important;
-      }
-      header.header-gradient nav .tab-btn.active i { color: #14B8A6 !important; }
-      header.header-gradient > div > div:last-child {
-        flex-direction: column !important; align-items: stretch !important;
-        width: 100% !important; gap: 6px !important;
-        padding-top: 14px !important; border-top: 1px solid rgba(255,255,255,0.1) !important;
-        display: flex !important;
-      }
-      header.header-gradient > div > div:last-child button {
-        width: 100% !important; justify-content: center !important;
-        padding: 9px 10px !important; font-size: 12.5px !important;
-      }
-      main {
-        margin: 0 240px 0 0 !important; max-width: none !important;
-        padding: 14px 16px !important;
-      }
-      .pos-layout { grid-template-columns: 1fr 380px !important; }
-      .pos-sidebar { display: none !important; }
-      .sticky { top: 14px !important; }
-      #posProductsGrid { max-height: calc(100vh - 180px) !important; }
-    }
-  `;
-  document.head.appendChild(designCSS);
 
   function ensureQRBox() {
     const receipt = document.getElementById('printableReceipt');
@@ -359,8 +173,9 @@
     if (!grid || document.getElementById('pdfBtn')) return;
     const btn = document.createElement('button');
     btn.id = 'pdfBtn';
+    btn.type = 'button';
     btn.onclick = shareReceiptPDF;
-    btn.className = 'bg-rose-600 hover:bg-rose-700 text-white py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-1 col-span-2';
+    btn.className = 'bg-rose-600 hover:bg-rose-700 text-white py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1 col-span-2';
     btn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> مشاركة PDF (جودة أعلى)';
     grid.appendChild(btn);
   }
@@ -381,9 +196,8 @@
       if (typeof AshourDB !== 'undefined' && typeof AshourDB.saveBackup === 'function') {
         await AshourDB.saveBackup(state);
         localStorage.setItem(AUTO_BACKUP_KEY, String(Date.now()));
-        console.log('[auto-backup] نسخة احتياطية تلقائية');
       }
-    } catch (e) { console.warn('[auto-backup] فشل:', e); }
+    } catch (_) {}
   }
   const waitForData = setInterval(() => {
     if (typeof state === 'object' && state && state.products) {
@@ -418,13 +232,13 @@
   }
 
   function addEncryptedExportButton() {
-    const backupSection = Array.from(document.querySelectorAll('h3')).find(h => h.textContent.includes('النسخ الاحتياطي'));
-    if (!backupSection) return;
-    const parent = backupSection.closest('.space-y-2');
+    const parent = document.getElementById('backupSectionBox');
     if (!parent || parent.querySelector('#encryptedExportBtn')) return;
+
     const btn = document.createElement('button');
     btn.id = 'encryptedExportBtn';
-    btn.className = 'bg-violet-600 hover:bg-violet-700 text-white font-bold text-sm px-4 py-2 rounded-xl mt-2';
+    btn.type = 'button';
+    btn.className = 'bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs px-4 py-2 rounded-xl';
     btn.innerHTML = '<i class="fa-solid fa-lock"></i> تصدير مشفّر';
     btn.onclick = async () => {
       const pwd = prompt('أدخل كلمة مرور قوية (8 أحرف على الأقل):');
@@ -447,7 +261,8 @@
 
     const importBtn = document.createElement('button');
     importBtn.id = 'encryptedImportBtn';
-    importBtn.className = 'bg-violet-100 hover:bg-violet-200 text-violet-800 font-bold text-sm px-4 py-2 rounded-xl mt-2 mr-2 border border-violet-300';
+    importBtn.type = 'button';
+    importBtn.className = 'bg-violet-100 hover:bg-violet-200 text-violet-800 font-bold text-xs px-4 py-2 rounded-xl border border-violet-300';
     importBtn.innerHTML = '<i class="fa-solid fa-unlock"></i> استعادة مشفّرة';
     importBtn.onclick = () => {
       const input = document.createElement('input');
@@ -476,11 +291,8 @@
     parent.appendChild(importBtn);
   }
   const waitForSettings = setInterval(() => {
-    if (document.getElementById('view-settings') && document.querySelector('#view-settings h2')) {
+    if (document.getElementById('backupSectionBox')) {
       addEncryptedExportButton(); clearInterval(waitForSettings);
     }
-  }, 800);
-
-  window.lockSiteAccess = lockSiteAccess;
-  console.log('%c[updates.js] التحديثات جاهزة ✓', 'color:#14B8A6;font-weight:bold;font-size:13px');
+  }, 500);
 })();
