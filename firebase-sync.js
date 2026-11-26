@@ -1,4 +1,4 @@
-// firebase-sync.js — المزامنة السحابية (نسخة معدّلة)
+// firebase-sync.js — المزامنة السحابية (مع دعم tombstones للحذف الآمن)
 const FireSync = {
   currentUser: null,
   _isSyncing: false,
@@ -10,7 +10,6 @@ const FireSync = {
   _sizeWarned: false,
   UPLOAD_DELAY_MS: 3000,
   UID_KEY: 'ashour_last_uid',
-  // حالة واجهة وأسرار محلية: لا تُرفع للسحابة ولا تُستبدل منها
   LOCAL_ONLY_KEYS: ['pinHash', 'pinSalt', 'pinAttempts', 'pinLockUntil', 'pinLength', 'cart', 'posPriceOverride',
     'customPricesEditing', 'currentLedgerClientId', 'currentReceiptInv', 'activeCompanyId', 'selectedPosCategory'],
 
@@ -38,11 +37,30 @@ const FireSync = {
     return Array.from(map.values());
   },
 
+  _mergeTombstones(localTombs, cloudTombs) {
+    const all = [...(localTombs || []), ...(cloudTombs || [])];
+    const seen = new Set();
+    return all.filter(t => {
+      if (!t || !t.col || t.id === undefined) return false;
+      const k = `${t.col}|${t.id}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  },
+
   _reconcileState(localState, cloudData) {
     const merged = typeof deepMerge === 'function' ? deepMerge(localState, cloudData) : { ...localState, ...cloudData };
+    const tombstones = this._mergeTombstones(localState.tombstones, cloudData.tombstones);
+    const tombSet = new Set(tombstones.map(t => `${t.col}|${t.id}`));
+    merged.tombstones = tombstones;
+
     ['products', 'clients', 'invoices', 'expenses', 'payments', 'returns', 'directSales', 'noInvoiceItems',
-      'companies', 'purchases', 'companyPayments', 'personDebts', 'orders'].forEach((key) => {
-      merged[key] = this._mergeById(localState[key], cloudData[key]);
+      'companies', 'purchases', 'companyPayments', 'personDebts', 'orders', 'stockMovements'].forEach((key) => {
+      let arr = this._mergeById(localState[key], cloudData[key]);
+      // فلترة المحذوفات
+      arr = arr.filter(item => !tombSet.has(`${key}|${item.id}`));
+      merged[key] = arr;
     });
 
     const seen = new Set();
@@ -67,7 +85,6 @@ const FireSync = {
   init() {
     const auth = window.firebaseAuth;
     if (!auth) {
-      // بدون إنترنت لا تُحمَّل Firebase: نحاول مدة محدودة فقط (كانت حلقة لا تنتهي)
       if (this._initTries++ < 20) setTimeout(() => this.init(), 1500);
       return;
     }
@@ -124,17 +141,16 @@ const FireSync = {
       if (typeof Swal !== 'undefined') Swal.fire('خطأ', 'النظام لم يجهز بعد. تأكد من الاتصال بالإنترنت وأعد تحميل الصفحة.', 'error');
       return;
     }
-    try {
-      await window.firebaseSignIn(window.firebaseAuth, window.googleProvider);
-    } catch (error) {
+    try { await window.firebaseSignIn(window.firebaseAuth, window.googleProvider); }
+    catch (error) {
       console.error('Login failed:', error);
       if (typeof Swal === 'undefined') return;
       let msg = 'فشل تسجيل الدخول.';
       if (error.code === 'auth/popup-blocked') msg = 'المتصفح منع النافذة المنبثقة. اسمح بها من إعدادات المتصفح.';
-      else if (error.code === 'auth/unauthorized-domain') msg = `النطاق (${location.hostname}) غير مصرّح به في Firebase. أضفه من Firebase Console → Authentication → Settings → Authorized Domains.`;
+      else if (error.code === 'auth/unauthorized-domain') msg = `النطاق (${location.hostname}) غير مصرّح به في Firebase.`;
       else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') return;
       else if (error.code === 'auth/network-request-failed') msg = 'تحقق من اتصال الإنترنت.';
-      else if (error.code === 'auth/operation-not-allowed') msg = 'تسجيل الدخول بـ Google غير مفعّل في Firebase Console → Authentication → Sign-in method.';
+      else if (error.code === 'auth/operation-not-allowed') msg = 'تسجيل الدخول بـ Google غير مفعّل في Firebase Console.';
       Swal.fire('خطأ في تسجيل الدخول', msg, 'error');
     }
   },
@@ -155,7 +171,6 @@ const FireSync = {
     } catch (e) {}
   },
 
-  // يجمع الحفظات المتتالية في رفع واحد بعد 3 ثوانٍ (كان يرفع كل البيانات مع كل عملية)
   saveToCloud(data) {
     if (!this.currentUser || !window.firebaseDB) return Promise.resolve(false);
     this._latest = data;
@@ -174,10 +189,9 @@ const FireSync = {
       const payload = { ...JSON.parse(JSON.stringify(data)), lastUpdated: stamp };
       this.LOCAL_ONLY_KEYS.forEach((k) => delete payload[k]);
 
-      // حد مستند Firestore 1MB: ننبّه قبل الوصول إليه بدل الفشل الصامت
       if (!this._sizeWarned && JSON.stringify(payload).length > 800000 && typeof Swal !== 'undefined') {
         this._sizeWarned = true;
-        Swal.fire({ icon: 'warning', title: 'حجم البيانات كبير', text: 'اقترب حجم البيانات من حد المزامنة السحابية. صدّر نسخة احتياطية الآن، وراجعني لتحويل المزامنة إلى نظام أكبر.', confirmButtonColor: '#0F5C4E' });
+        Swal.fire({ icon: 'warning', title: 'حجم البيانات كبير', text: 'اقترب حجم البيانات من حد المزامنة السحابية. صدّر نسخة احتياطية الآن.', confirmButtonColor: '#0F5C4E' });
       }
       if (typeof state === 'object' && state) state.lastUpdated = stamp;
       const ref = window.firebaseDoc(window.firebaseDB, 'users', this.currentUser.uid, 'store', 'data');
@@ -188,7 +202,7 @@ const FireSync = {
     } catch (e) {
       console.error('Firebase Save Error:', e);
       this._lastError = true;
-      if (!this._latest) this._latest = data;   // يُعاد رفعها عند الحفظ التالي أو عودة الاتصال
+      if (!this._latest) this._latest = data;
       this._updateLoginUI(this.currentUser);
       return false;
     }
@@ -197,18 +211,18 @@ const FireSync = {
   _hasLocalData() {
     return typeof state === 'object' && state && (
       (state.invoices || []).length || (state.clients || []).length > 1 ||
-      (state.purchases || []).length || (state.expenses || []).length);
+      (state.purchases || []).length || (state.expenses || []).length ||
+      (state.products || []).length);
   },
 
   async loadFromCloud(uid) {
     if (!window.firebaseDB || typeof state === 'undefined') return;
 
-    // حساب Google مختلف عن آخر حساب على هذا الجهاز: لا ندمج بياناتين لمتجرين دون سؤال
     const lastUid = localStorage.getItem(this.UID_KEY);
     if (lastUid && lastUid !== uid && this._hasLocalData() && typeof Swal !== 'undefined') {
       const r = await Swal.fire({
         icon: 'warning', title: 'حساب مختلف',
-        text: 'هذا الحساب يختلف عن الحساب السابق على هذا الجهاز. هل تريد دمج بيانات هذا الجهاز مع بيانات الحساب الجديد؟',
+        text: 'هذا الحساب يختلف عن الحساب السابق. هل تريد دمج بيانات هذا الجهاز مع بيانات الحساب الجديد؟',
         showCancelButton: true, confirmButtonText: 'ادمج', cancelButtonText: 'تسجيل الخروج',
         confirmButtonColor: '#0F5C4E', cancelButtonColor: '#d33', allowOutsideClick: false
       });
@@ -223,7 +237,7 @@ const FireSync = {
 
       if (snap.exists()) {
         const cloud = snap.data() || {};
-        this.LOCAL_ONLY_KEYS.forEach((k) => delete cloud[k]);   // بيانات قديمة رُفعت سابقاً
+        this.LOCAL_ONLY_KEYS.forEach((k) => delete cloud[k]);
         const localTs = Number(state.lastUpdated) || 0;
         const cloudTs = Number(cloud.lastUpdated) || 0;
 
