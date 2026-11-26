@@ -1,9 +1,18 @@
-// firebase-sync.js — المزامنة السحابية
+// firebase-sync.js — المزامنة السحابية (نسخة معدّلة)
 const FireSync = {
   currentUser: null,
   _isSyncing: false,
-  _pendingSave: null,
   _initialized: false,
+  _initTries: 0,
+  _timer: null,
+  _latest: null,
+  _lastError: false,
+  _sizeWarned: false,
+  UPLOAD_DELAY_MS: 3000,
+  UID_KEY: 'ashour_last_uid',
+  // حالة واجهة وأسرار محلية: لا تُرفع للسحابة ولا تُستبدل منها
+  LOCAL_ONLY_KEYS: ['pinHash', 'pinSalt', 'pinAttempts', 'pinLockUntil', 'pinLength', 'cart', 'posPriceOverride',
+    'customPricesEditing', 'currentLedgerClientId', 'currentReceiptInv', 'activeCompanyId', 'selectedPosCategory'],
 
   _mergeById(localArr = [], remoteArr = []) {
     const map = new Map();
@@ -23,66 +32,43 @@ const FireSync = {
             };
           }
           map.set(key, merged);
-        } else {
-          map.set(key, item);
-        }
+        } else map.set(key, item);
       }
     });
     return Array.from(map.values());
   },
 
   _reconcileState(localState, cloudData) {
-    const merged = typeof deepMerge === 'function'
-      ? deepMerge(localState, cloudData)
-      : { ...localState, ...cloudData };
-
-    const arrayKeys = [
-      'products','clients','invoices','expenses','payments','returns',
-      'directSales','noInvoiceItems','companies','purchases','companyPayments','personDebts','orders'
-    ];
-
-    arrayKeys.forEach((key) => {
+    const merged = typeof deepMerge === 'function' ? deepMerge(localState, cloudData) : { ...localState, ...cloudData };
+    ['products', 'clients', 'invoices', 'expenses', 'payments', 'returns', 'directSales', 'noInvoiceItems',
+      'companies', 'purchases', 'companyPayments', 'personDebts', 'orders'].forEach((key) => {
       merged[key] = this._mergeById(localState[key], cloudData[key]);
     });
 
-    if (Array.isArray(localState.auditLog) || Array.isArray(cloudData.auditLog)) {
-      const seenTs = new Set();
-      const combinedAudit = [...(cloudData.auditLog || []), ...(localState.auditLog || [])]
-        .filter((entry) => {
-          if (!entry) return false;
-          const k = `${entry.ts || ''}_${entry.type || ''}_${entry.details || ''}`;
-          if (seenTs.has(k)) return false;
-          seenTs.add(k);
-          return true;
-        })
-        .sort((a, b) => (b.ts || 0) - (a.ts || 0))
-        .slice(0, 500);
-      merged.auditLog = combinedAudit;
-    }
+    const seen = new Set();
+    merged.auditLog = [...(cloudData.auditLog || []), ...(localState.auditLog || [])]
+      .filter((e) => {
+        if (!e) return false;
+        const k = `${e.ts || ''}_${e.type || ''}_${e.details || ''}`;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      })
+      .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+      .slice(0, 500);
 
-    merged.invoiceCounter = Math.max(
-      Number(localState.invoiceCounter) || 1000,
-      Number(cloudData.invoiceCounter) || 1000
-    );
-
-    merged.clients.forEach((c) => {
-      if (!c.customPrices || typeof c.customPrices !== 'object') c.customPrices = {};
-    });
-
-    merged.cart = Array.isArray(localState.cart) ? localState.cart : [];
-    merged.lastUpdated = Math.max(
-      Number(localState.lastUpdated) || 0,
-      Number(cloudData.lastUpdated) || 0,
-      Date.now()
-    );
-
+    merged.invoiceCounter = Math.max(Number(localState.invoiceCounter) || 1000, Number(cloudData.invoiceCounter) || 1000);
+    merged.clients.forEach((c) => { if (!c.customPrices || typeof c.customPrices !== 'object') c.customPrices = {}; });
+    this.LOCAL_ONLY_KEYS.forEach((k) => { merged[k] = localState[k]; });
+    merged.lastUpdated = Math.max(Number(localState.lastUpdated) || 0, Number(cloudData.lastUpdated) || 0, Date.now());
     return merged;
   },
 
   init() {
     const auth = window.firebaseAuth;
     if (!auth) {
-      setTimeout(() => this.init(), 500);
+      // بدون إنترنت لا تُحمَّل Firebase: نحاول مدة محدودة فقط (كانت حلقة لا تنتهي)
+      if (this._initTries++ < 20) setTimeout(() => this.init(), 1500);
       return;
     }
     if (this._initialized) return;
@@ -93,23 +79,15 @@ const FireSync = {
       this._updateLoginUI(user);
       if (user) await this.loadFromCloud(user.uid);
     });
-
     window.addEventListener('online', () => {
       this._updateLoginUI(this.currentUser);
-      if (this.currentUser && typeof state !== 'undefined') {
-        this.saveToCloud(state).then(ok => {
-          if (ok && typeof toast === 'function') toast('تمت المزامنة بعد عودة الاتصال', 'success');
-        });
-      }
+      if (this.currentUser && typeof state !== 'undefined') this.saveToCloud(state);
     });
-
-    window.addEventListener('offline', () => {
-      this._updateLoginUI(this.currentUser);
-    });
+    window.addEventListener('offline', () => this._updateLoginUI(this.currentUser));
   },
 
   _updateLoginUI(user) {
-    const isOnline = navigator.onLine;
+    const online = navigator.onLine;
     const btn = document.getElementById('settingsGoogleBtn');
     const text = document.getElementById('settingsGoogleBtnText');
     const statusEl = document.getElementById('settingsSyncStatus');
@@ -122,17 +100,13 @@ const FireSync = {
         btn.classList.remove('bg-white', 'text-blue-700', 'border-blue-300', 'hover:bg-blue-50');
         btn.classList.add('bg-rose-50', 'text-rose-700', 'border-rose-300', 'hover:bg-rose-100');
       }
-      if (statusEl) {
-        statusEl.innerHTML = isOnline
-          ? `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-cloud"></i> متزامن</span>`
-          : `<span class="text-amber-600 font-bold"><i class="fa-solid fa-cloud-slash"></i> غير متصل</span>`;
-      }
+      let label, color;
+      if (this._lastError) { label = 'فشل الرفع'; color = 'text-rose-600'; }
+      else if (!online) { label = 'غير متصل'; color = 'text-amber-600'; }
+      else { label = 'متزامن'; color = 'text-emerald-600'; }
+      if (statusEl) statusEl.innerHTML = `<span class="${color} font-bold"><i class="fa-solid fa-cloud"></i> ${label}</span>`;
       if (emailEl) emailEl.textContent = user.email || '';
-      if (headerStatus) {
-        headerStatus.innerHTML = isOnline
-          ? `<i class="fa-solid fa-cloud text-emerald-300"></i> متزامن`
-          : `<i class="fa-solid fa-cloud-slash text-amber-300"></i> غير متصل`;
-      }
+      if (headerStatus) headerStatus.innerHTML = `<i class="fa-solid fa-cloud ${color.replace('600', '300')}"></i> ${label}`;
     } else {
       if (text) text.textContent = 'تسجيل الدخول بـ Google';
       if (btn) {
@@ -147,7 +121,7 @@ const FireSync = {
 
   async login() {
     if (!window.firebaseAuth) {
-      if (typeof Swal !== 'undefined') Swal.fire('خطأ', 'النظام لم يجهز بعد. أعد تحميل الصفحة.', 'error');
+      if (typeof Swal !== 'undefined') Swal.fire('خطأ', 'النظام لم يجهز بعد. تأكد من الاتصال بالإنترنت وأعد تحميل الصفحة.', 'error');
       return;
     }
     try {
@@ -158,7 +132,7 @@ const FireSync = {
       let msg = 'فشل تسجيل الدخول.';
       if (error.code === 'auth/popup-blocked') msg = 'المتصفح منع النافذة المنبثقة. اسمح بها من إعدادات المتصفح.';
       else if (error.code === 'auth/unauthorized-domain') msg = `النطاق (${location.hostname}) غير مصرّح به في Firebase. أضفه من Firebase Console → Authentication → Settings → Authorized Domains.`;
-      else if (error.code === 'auth/cancelled-popup-request') return;
+      else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') return;
       else if (error.code === 'auth/network-request-failed') msg = 'تحقق من اتصال الإنترنت.';
       else if (error.code === 'auth/operation-not-allowed') msg = 'تسجيل الدخول بـ Google غير مفعّل في Firebase Console → Authentication → Sign-in method.';
       Swal.fire('خطأ في تسجيل الدخول', msg, 'error');
@@ -168,78 +142,111 @@ const FireSync = {
   async logout() {
     if (!window.firebaseAuth) return;
     try {
-      const confirmed = await Swal.fire({
+      const r = await Swal.fire({
         title: 'تسجيل خروج؟', text: 'بياناتك ستبقى محلياً.', icon: 'question',
         showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#64748b',
         confirmButtonText: 'نعم، خروج', cancelButtonText: 'إلغاء'
       });
-      if (confirmed.isConfirmed) {
+      if (r.isConfirmed) {
+        clearTimeout(this._timer);
         await window.firebaseSignOut(window.firebaseAuth);
         if (typeof toast === 'function') toast('تم تسجيل الخروج', 'success');
       }
     } catch (e) {}
   },
 
-  async saveToCloud(data) {
-    if (!this.currentUser || !window.firebaseDB) return false;
-    if (this._isSyncing) {
-      this._pendingSave = data;
-      return false;
-    }
+  // يجمع الحفظات المتتالية في رفع واحد بعد 3 ثوانٍ (كان يرفع كل البيانات مع كل عملية)
+  saveToCloud(data) {
+    if (!this.currentUser || !window.firebaseDB) return Promise.resolve(false);
+    this._latest = data;
+    clearTimeout(this._timer);
+    this._timer = setTimeout(() => this._upload(), this.UPLOAD_DELAY_MS);
+    return Promise.resolve(true);
+  },
+
+  async _upload() {
+    if (!this.currentUser || !window.firebaseDB || !this._latest) return false;
+    if (this._isSyncing) { this._timer = setTimeout(() => this._upload(), 1000); return false; }
+    const data = this._latest;
+    this._latest = null;
     try {
       const stamp = Date.now();
       const payload = { ...JSON.parse(JSON.stringify(data)), lastUpdated: stamp };
-      delete payload.pinHash;
-      delete payload.pinSalt;
-      delete payload.pinAttempts;
-      delete payload.pinLockUntil;
+      this.LOCAL_ONLY_KEYS.forEach((k) => delete payload[k]);
 
-      if (typeof state === 'object' && state) state.lastUpdated = stamp;
-      const userDoc = window.firebaseDoc(window.firebaseDB, 'users', this.currentUser.uid, 'store', 'data');
-      await window.firebaseSetDoc(userDoc, payload);
-
-      if (this._pendingSave) {
-        const pending = this._pendingSave;
-        this._pendingSave = null;
-        setTimeout(() => this.saveToCloud(pending), 200);
+      // حد مستند Firestore 1MB: ننبّه قبل الوصول إليه بدل الفشل الصامت
+      if (!this._sizeWarned && JSON.stringify(payload).length > 800000 && typeof Swal !== 'undefined') {
+        this._sizeWarned = true;
+        Swal.fire({ icon: 'warning', title: 'حجم البيانات كبير', text: 'اقترب حجم البيانات من حد المزامنة السحابية. صدّر نسخة احتياطية الآن، وراجعني لتحويل المزامنة إلى نظام أكبر.', confirmButtonColor: '#0F5C4E' });
       }
+      if (typeof state === 'object' && state) state.lastUpdated = stamp;
+      const ref = window.firebaseDoc(window.firebaseDB, 'users', this.currentUser.uid, 'store', 'data');
+      await window.firebaseSetDoc(ref, payload);
+      this._lastError = false;
+      this._updateLoginUI(this.currentUser);
       return true;
     } catch (e) {
       console.error('Firebase Save Error:', e);
+      this._lastError = true;
+      if (!this._latest) this._latest = data;   // يُعاد رفعها عند الحفظ التالي أو عودة الاتصال
+      this._updateLoginUI(this.currentUser);
       return false;
     }
   },
 
+  _hasLocalData() {
+    return typeof state === 'object' && state && (
+      (state.invoices || []).length || (state.clients || []).length > 1 ||
+      (state.purchases || []).length || (state.expenses || []).length);
+  },
+
   async loadFromCloud(uid) {
     if (!window.firebaseDB || typeof state === 'undefined') return;
+
+    // حساب Google مختلف عن آخر حساب على هذا الجهاز: لا ندمج بياناتين لمتجرين دون سؤال
+    const lastUid = localStorage.getItem(this.UID_KEY);
+    if (lastUid && lastUid !== uid && this._hasLocalData() && typeof Swal !== 'undefined') {
+      const r = await Swal.fire({
+        icon: 'warning', title: 'حساب مختلف',
+        text: 'هذا الحساب يختلف عن الحساب السابق على هذا الجهاز. هل تريد دمج بيانات هذا الجهاز مع بيانات الحساب الجديد؟',
+        showCancelButton: true, confirmButtonText: 'ادمج', cancelButtonText: 'تسجيل الخروج',
+        confirmButtonColor: '#0F5C4E', cancelButtonColor: '#d33', allowOutsideClick: false
+      });
+      if (!r.isConfirmed) { await window.firebaseSignOut(window.firebaseAuth); return; }
+    }
+
     this._isSyncing = true;
     try {
-      const userDoc = window.firebaseDoc(window.firebaseDB, 'users', uid, 'store', 'data');
-      const docSnap = await window.firebaseGetDoc(userDoc);
+      const ref = window.firebaseDoc(window.firebaseDB, 'users', uid, 'store', 'data');
+      const snap = await window.firebaseGetDoc(ref);
+      let pushLocal = false;
 
-      if (docSnap.exists()) {
-        const cloudData = docSnap.data() || {};
-        const localLastUpdate = Number(state.lastUpdated) || 0;
-        const cloudLastUpdate = Number(cloudData.lastUpdated) || 0;
+      if (snap.exists()) {
+        const cloud = snap.data() || {};
+        this.LOCAL_ONLY_KEYS.forEach((k) => delete cloud[k]);   // بيانات قديمة رُفعت سابقاً
+        const localTs = Number(state.lastUpdated) || 0;
+        const cloudTs = Number(cloud.lastUpdated) || 0;
 
-        if (cloudLastUpdate > localLastUpdate + 1000) {
-          state = this._reconcileState(state, cloudData);
+        if (cloudTs > localTs + 1000) {
+          state = this._reconcileState(state, cloud);
           if (window.AshourDB && typeof AshourDB.save === 'function') await AshourDB.save(state);
           if (typeof refreshCategoryWidgets === 'function') refreshCategoryWidgets();
           if (typeof initPOSCategories === 'function') initPOSCategories();
           if (typeof renderAll === 'function') renderAll();
           if (typeof toast === 'function') toast('تم تحديث البيانات من السحابة', 'info');
-        } else if (localLastUpdate > cloudLastUpdate + 1000) {
-          this._isSyncing = false;
-          await this.saveToCloud(state);
-          if (typeof toast === 'function') toast('تمت مزامنة تعديلاتك المحلية', 'success');
-        }
-      } else {
-        this._isSyncing = false;
-        await this.saveToCloud(state);
+        } else if (localTs > cloudTs + 1000) pushLocal = true;
+      } else pushLocal = true;
+
+      localStorage.setItem(this.UID_KEY, uid);
+      this._isSyncing = false;
+      if (pushLocal) {
+        this._latest = state;
+        await this._upload();
+        if (typeof toast === 'function' && !this._lastError) toast('تمت مزامنة بيانات هذا الجهاز', 'success');
       }
     } catch (e) {
       console.error('Firebase Load Error:', e);
+      this._lastError = true;
     } finally {
       this._isSyncing = false;
       this._updateLoginUI(this.currentUser);
