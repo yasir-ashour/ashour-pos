@@ -1,5 +1,5 @@
 /* ==========================================================================
-   app.js — الجزء الأول
+   app.js — الجزء الأول (النهائي المعدّل)
    ========================================================================== */
 
 const CURRENCY = 'ل.س.ج';
@@ -53,7 +53,7 @@ const DEFAULT_CATEGORIES = ['بسكويت', 'شيبس', 'عصائر ومشروب
 let state = {};
 let isCheckoutSubmitting = false;
 let currentDebtTab = 'take';
-let pendingOrder = null; // { id, cartHash }
+let pendingOrder = null;
 let currentInvoicePage = 1;
 const INVOICES_PER_PAGE = 50;
 let receiveStockDraft = {};
@@ -65,29 +65,18 @@ function defaultState() {
     displayCurrency: 'SYP',
     exchangeRate: 15000,
     products: [],
-    clients: [
-      { id: 'c1', name: 'زبون نقدي مباشر', type: 'retail', phone: '-', address: '-', openingDebt: 0, customPrices: {} }
-    ],
+    clients: [{ id: 'c1', name: 'زبون نقدي مباشر', type: 'retail', phone: '-', address: '-', openingDebt: 0, customPrices: {} }],
     invoices: [], expenses: [], payments: [], returns: [], directSales: [], noInvoiceItems: [],
     companies: [], purchases: [], companyPayments: [], personDebts: [],
-    orders: [],
-    stockMovements: [],
-    tombstones: [],
-    trash: [],
+    orders: [], stockMovements: [], tombstones: [], trash: [],
     auditLog: [{ ts: Date.now(), date: nowStr(), type: 'النظام', details: 'بدء تشغيل النظام', status: 'مكتمل' }],
     invoiceCounter: 1000,
-    cart: [],
-    selectedPosCategory: 'الكل',
-    posPriceOverride: null,
-    currentLedgerClientId: null,
-    currentReceiptInv: null,
-    activeCompanyId: null,
-    customPricesEditing: null,
-    lastUpdated: 0
+    cart: [], selectedPosCategory: 'الكل', posPriceOverride: null,
+    currentLedgerClientId: null, currentReceiptInv: null, activeCompanyId: null,
+    customPricesEditing: null, lastUpdated: 0
   };
 }
 
-// ===== Tombstones (للحذف الآمن) =====
 function addTombstone(col, id) {
   if (!state.tombstones) state.tombstones = [];
   const idStr = String(id);
@@ -104,19 +93,12 @@ function filterDeleted(col, arr) {
   return arr.filter(item => item && !isDeleted(col, item.id));
 }
 
-// ===== Trash =====
 function addToTrash(col, record) {
   if (!state.trash) state.trash = [];
   state.trash.push({ col, ts: Date.now(), rec: record });
   if (state.trash.length > 2000) state.trash = state.trash.slice(-2000);
 }
-function removeFromTrash(col, id) {
-  if (!state.trash) return;
-  const idStr = String(id);
-  state.trash = state.trash.filter(t => !(t.col === col && String(t.rec.id) === idStr));
-}
 
-// ===== Storage =====
 async function saveToStorage() {
   const result = await AshourDB.save(state);
   if (!result.ok) {
@@ -143,18 +125,15 @@ async function loadFromStorage() {
     throw new Error('load failed');
   }
   state = (result.ok && result.state) ? deepMerge(defaultState(), result.state) : defaultState();
-
   ['returns', 'directSales', 'noInvoiceItems', 'companies', 'payments', 'expenses', 'invoices', 'products', 'clients', 'purchases', 'companyPayments', 'personDebts', 'orders', 'stockMovements', 'tombstones', 'trash'].forEach(k => {
     if (!Array.isArray(state[k])) state[k] = [];
   });
-
   state.clients.forEach(c => { if (!c.customPrices || typeof c.customPrices !== 'object') c.customPrices = {}; });
   state.products.forEach(p => {
     if (typeof p.trackStock !== 'boolean') p.trackStock = false;
     if (typeof p.stock !== 'number') p.stock = 0;
     if (typeof p.minStock !== 'number') p.minStock = 5;
   });
-
   if (!state.invoiceCounter) state.invoiceCounter = 1000;
   if (!state.pinSalt) state.pinSalt = generateSalt();
   if (!state.pinHash) { state.pinHash = await hashPin('1234', state.pinSalt); state.pinLength = 4; }
@@ -191,7 +170,6 @@ async function hashPin(pin, salt) {
   return 'f' + (h >>> 0).toString(16);
 }
 
-// ===== PIN =====
 let enteredPin = '';
 function pressPin(n) {
   const targetLen = state.pinLength || 4;
@@ -249,7 +227,6 @@ function logAudit(type, details) {
   AshourDB.addAudit(entry);
 }
 
-// ===== Currency =====
 async function toggleCurrency() {
   state.displayCurrency = state.displayCurrency === 'USD' ? 'SYP' : 'USD';
   const btn = $('currencyToggleBtn'), btnD = $('currencyToggleBtnDesktop');
@@ -259,7 +236,6 @@ async function toggleCurrency() {
   toast(`تم التبديل إلى ${state.displayCurrency === 'USD' ? 'الدولار' : 'الليرة السورية'}`, 'info');
 }
 
-// ===== Tabs =====
 function switchTab(tabId) {
   document.querySelectorAll('.tab-view').forEach(el => { el.classList.add('hidden'); el.classList.remove('active'); });
   const view = $('view-' + tabId);
@@ -267,7 +243,6 @@ function switchTab(tabId) {
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('bg-white/20', 'active'));
   const btn = $('tab-' + tabId);
   if (btn) btn.classList.add('bg-white/20', 'active');
-
   if (tabId === 'settings') { loadStoreInfoToSettings(); refreshStorageStatus(); }
   if (tabId === 'reports') renderReports();
   if (tabId === 'purchases') renderPurchases();
@@ -276,7 +251,6 @@ function switchTab(tabId) {
   if (tabId === 'companies') renderCompaniesGrid();
   if (tabId === 'orders') { renderOrders(); updateOrdersBadge(); }
   if (tabId === 'inventory') { switchInventorySubTab('products'); renderInventoryTable(); updateInventoryBadge(); }
-
   renderAll();
 }
 
@@ -293,7 +267,6 @@ window.addEventListener('popstate', () => {
 });
 history.pushState(null, null, location.href);
 
-// ===== Categories =====
 function allCategories() {
   const set = new Set(DEFAULT_CATEGORIES);
   filterDeleted('products', state.products).forEach(p => { if (p.category) set.add(p.category); });
@@ -305,21 +278,10 @@ function refreshCategoryWidgets() {
   $('prodCatDropdownList').innerHTML = `<div onclick="selectProdCat('')" class="p-2.5 hover:bg-slate-100 cursor-pointer text-xs font-bold">جميع الفئات</div>` + cats.map(c => `<div onclick="selectProdCat('${esc(c)}')" class="p-2.5 hover:bg-slate-100 cursor-pointer text-xs font-bold">${esc(c)}</div>`).join('');
   initPOSCategories();
 }
-function selectProdCat(cat) {
-  $('prodCategoryFilter').value = cat;
-  $('selectedProdCatText').textContent = cat || 'جميع الفئات';
-  $('prodCatDropdownList').classList.add('hidden');
-  renderProductsTable();
-}
+function selectProdCat(cat) { $('prodCategoryFilter').value = cat; $('selectedProdCatText').textContent = cat || 'جميع الفئات'; $('prodCatDropdownList').classList.add('hidden'); renderProductsTable(); }
 function toggleProdCatDropdown() { $('prodCatDropdownList').classList.toggle('hidden'); }
-function selectInvoiceStatus(val, label) {
-  $('invoiceStatusFilter').value = val;
-  $('selectedInvoiceStatusText').textContent = label;
-  $('invoiceStatusDropdownList').classList.add('hidden');
-  renderInvoicesTable();
-}
+function selectInvoiceStatus(val, label) { $('invoiceStatusFilter').value = val; $('selectedInvoiceStatusText').textContent = label; $('invoiceStatusDropdownList').classList.add('hidden'); renderInvoicesTable(); }
 
-// ===== Client debt =====
 function getClientDebt(clientId) {
   const c = state.clients.find(x => x.id === clientId);
   if (!c) return 0;
@@ -345,7 +307,6 @@ function resolveProductPricing(product, client, overrideMode = null) {
   return { price: toNum(product.retailPrice), label: 'تجزئة', isCustom: false };
 }
 
-// ===== Custom prices =====
 async function setClientSpecialPrice(clientId, productId, price) {
   const client = state.clients.find(c => c.id === clientId);
   const prod = state.products.find(p => p.id === productId);
@@ -421,7 +382,6 @@ async function clearAllCustomPrices() {
   editing.draft = {}; renderCustomPricesList(); toast('سيتم المسح عند الحفظ', 'info');
 }
 
-// ===== POS categories =====
 function initPOSCategories() {
   const cats = ['الكل', ...allCategories()];
   if (!cats.includes(state.selectedPosCategory)) state.selectedPosCategory = 'الكل';
@@ -440,7 +400,6 @@ function initPOSCategories() {
 }
 function setPosCat(cat) { state.selectedPosCategory = cat; initPOSCategories(); renderPosProducts(); }
 
-// ===== POS client =====
 function getSelectedPosClient() {
   const id = $('posClientSelect').value || 'c1';
   return state.clients.find(c => c.id === id) || state.clients[0] || { id: 'c1', name: 'زبون نقدي مباشر', type: 'retail', customPrices: {} };
@@ -496,7 +455,6 @@ function populatePosClients() {
       <span class="text-[11px] text-slate-500">دين: ${fmtCur(getClientDebt(c.id))}</span>
     </div>`;
   }).join('');
-  // ✅ إصلاح: الافتراضي دائماً هو الزبون النقدي، وليس أول زبون في القائمة
   if (!$('posClientSelect').value) {
     const c1 = state.clients.find(c => c.id === 'c1');
     if (c1) { $('posClientSelect').value = 'c1'; $('selectedClientText').textContent = c1.name; }
@@ -519,7 +477,6 @@ function onPosClientChange() {
   }
 }
 
-// ===== POS products =====
 function getStockStatus(product) {
   if (!product || !product.trackStock) return 'untracked';
   const stock = toNum(product.stock);
@@ -610,7 +567,6 @@ function addQuickCookie(price) {
   renderCart(); toast(`تمت إضافة ${name}`);
 }
 
-// ===== Cart =====
 function setCartItemQtyDirect(key, rawVal) {
   const item = state.cart.find(i => (i.quickId || i.productId) === key); if (!item) return;
   const val = roundMoney(rawVal);
@@ -716,7 +672,6 @@ function repeatLastInvoice() {
   renderCart(); toast('تم نسخ آخر فاتورة');
 }
 
-// ===== Stock helpers =====
 function addStockMovement(productId, type, qty, beforeStock, afterStock, note, refId) {
   const product = state.products.find(p => p.id === productId);
   if (!product) return null;
@@ -732,17 +687,7 @@ function addStockMovement(productId, type, qty, beforeStock, afterStock, note, r
   if (state.stockMovements.length > 5000) state.stockMovements = state.stockMovements.slice(-5000);
   return movement;
 }
-function adjustStock(productId, delta, type, note, refId) {
-  const product = state.products.find(p => p.id === productId);
-  if (!product || !product.trackStock) return false;
-  const before = toNum(product.stock);
-  const after = roundMoney(before + toNum(delta));
-  product.stock = after;
-  addStockMovement(productId, type, delta, before, after, note, refId);
-  return true;
-}
 
-// ===== Checkout =====
 function nextInvoiceNumber() {
   state.invoiceCounter = toNum(state.invoiceCounter || 1000) + 1;
   return 'INV-' + state.invoiceCounter;
@@ -767,10 +712,8 @@ async function checkoutPOS() {
   const paidRecorded = roundMoney(Math.min(paidEntered, total));
   const remaining = roundMoney(total - paidRecorded);
   if (remaining > 0 && client.id === 'c1') return warn('اختيار الزبون مطلوب', 'لتسجيل فاتورة آجلة أو جزئية، يرجى اختيار زبون مسجل بدلاً من الزبون النقدي المباشر.', 'warning');
-
   const saveBtn = $('checkoutSaveBtn');
   isCheckoutSubmitting = true; if (saveBtn) saveBtn.disabled = true;
-
   try {
     const items = state.cart.map(item => {
       const info = getCartItemInfo(item);
@@ -780,11 +723,8 @@ async function checkoutPOS() {
     const priceModeLabel = getActivePriceType() === 'wholesale' ? 'جملة' : 'تجزئة';
     const prevCounter = state.invoiceCounter;
     const inv = { id: nextInvoiceNumber(), ts: Date.now(), date: nowStr(), clientId: client.id, clientName: client.name, priceMode: priceModeLabel, paymentType, items, discount, total, paid: paidRecorded, remaining, changeGiven, profit: roundMoney(total - cost), status: 'active' };
-
     const previousInvoices = [...state.invoices];
     state.invoices.push(inv);
-
-    // خصم المخزون
     const stockSnapshots = [];
     for (const item of state.cart) {
       if (item.isQuickOnly) continue;
@@ -795,9 +735,7 @@ async function checkoutPOS() {
       p.stock = roundMoney(before - toNum(item.qty));
       addStockMovement(p.id, 'sale', -toNum(item.qty), before, p.stock, `فاتورة ${inv.id}`, inv.id);
     }
-
     logAudit('بيع فاتورة', `فاتورة ${inv.id} للزبون ${client.name} (${priceModeLabel}) بمبلغ ${fmtCur(total)} — متبقى ${fmtCur(remaining)}`);
-
     const ok = await saveToStorage();
     if (!ok) {
       state.invoices = previousInvoices; state.invoiceCounter = prevCounter;
@@ -805,19 +743,14 @@ async function checkoutPOS() {
       state.stockMovements = state.stockMovements.filter(m => m.refId !== inv.id);
       return;
     }
-
-    // ✅ إغلاق الطلب المرتبط فقط إذا لم تتغيّر السلة
     if (pendingOrder) {
       const currentHash = computeCartHash(state.cart);
       if (currentHash === pendingOrder.cartHash) {
         const o = state.orders.find(x => x.id === pendingOrder.id);
         if (o && o.status === 'pending') { o.status = 'delivered'; o.deliveredAt = Date.now(); o.invoiceId = inv.id; await saveToStorage(); renderOrders(); updateOrdersBadge(); }
-      } else {
-        toast('تم حفظ الفاتورة لكن الطلب لم يُغلق (تغيّرت السلة)', 'info');
-      }
+      } else { toast('تم حفظ الفاتورة لكن الطلب لم يُغلق (تغيّرت السلة)', 'info'); }
       pendingOrder = null;
     }
-
     showReceiptModal(inv);
     state.cart = []; state.posPriceOverride = null;
     $('posPaidAmount').value = ''; $('posDiscount').value = '';
@@ -829,7 +762,6 @@ async function checkoutPOS() {
   }
 }
 
-// ===== Barcode =====
 let html5QrCode = null;
 let currentScanTarget = 'quickEntryInput';
 function openBarcodeScanner(targetId = 'quickEntryInput') {
@@ -852,7 +784,6 @@ async function closeBarcodeScanner() {
   const modal = $('barcodeScannerModal'); modal.classList.add('hidden'); modal.style.display = 'none';
 }
 
-// ===== Direct sale =====
 function openDirectSaleModal() {
   $('dsName').value = ''; $('dsQty').value = '1'; $('dsPrice').value = ''; $('dsPaid').value = '';
   if ($('dsCost')) $('dsCost').value = '';
@@ -894,7 +825,6 @@ async function saveDirectSale() {
   closeModal('directSaleModal'); renderAll(); toast(`تم تسجيل ${qty} × ${name}`);
 }
 
-// ===== Products =====
 function generateUniqueSku() {
   const existing = new Set(state.products.map(p => String(p.sku || '').trim()));
   let num = Math.max(200, 101 + state.products.length);
@@ -965,19 +895,16 @@ async function saveProduct() {
   const trackStock = $('prodTrackStock').checked;
   let stock = toNum($('prodStockInput').value);
   const minStock = toNum($('prodMinStockInput').value) || 5;
-
   if (!name) return warn('خطأ', 'أدخل اسم المنتج');
   if (retailPrice <= 0 && wholesalePrice <= 0) return warn('خطأ', 'أدخل سعراً واحداً على الأقل');
   if (!sku) sku = generateUniqueSku();
   if (state.displayCurrency === 'USD') { cost = cost * state.exchangeRate; retailPrice = retailPrice * state.exchangeRate; wholesalePrice = wholesalePrice * state.exchangeRate; }
-
   const duplicate = state.products.find(p => p.sku === sku && p.id !== editId);
   if (duplicate) return warn('كود مكرر', `الكود ${sku} مستخدم للمنتج: ${duplicate.name}`, 'error');
   if (barcode) {
     const dupBarcode = state.products.find(p => p.barcode === barcode && p.id !== editId);
     if (dupBarcode) return warn('باركود مكرر', `الباركود ${barcode} مستخدم للمنتج: ${dupBarcode.name}`, 'error');
   }
-
   let previous = null;
   if (editId) {
     const p = state.products.find(x => x.id === editId); if (!p) return;
@@ -995,7 +922,6 @@ async function saveProduct() {
     if (trackStock && stock !== 0) addStockMovement(newProd.id, 'initial', stock, 0, stock, 'جرد افتتاحي', '');
     logAudit('إضافة منتج', `${name} (كود: ${sku})`);
   }
-
   const ok = await saveToStorage();
   if (!ok) {
     if (editId && previous) { const p = state.products.find(x => x.id === editId); if (p) Object.assign(p, previous); }
@@ -1021,7 +947,6 @@ function deleteProduct(id) {
     });
 }
 
-// ===== Quick product =====
 function openQuickProductModal(prefillBarcode = '') {
   $('qpName').value = ''; $('qpPrice').value = ''; $('qpQty').value = '1'; $('qpBarcode').value = prefillBarcode || '';
   if ($('qpCost')) $('qpCost').value = '';
@@ -1156,7 +1081,8 @@ function renderLedgerSummary(clientId) {
   activeInvs.forEach(i => rows.push({ id: i.id, type: 'invoice', ts: i.ts, label: `فاتورة ${i.id} — [${i.items.map(it => `${it.qty} × ${it.name} (${fmt(it.price)})`).join(' ، ')}]`, debit: i.total, credit: i.paid }));
   state.payments.filter(p => p.clientId === clientId).forEach(p => rows.push({ id: p.id, type: 'payment', ts: p.ts, label: p.amount < 0 ? `استرداد (${p.note || 'إلغاء'})` : 'تسديد دفعة', debit: 0, credit: p.amount }));
   state.returns.filter(r => r.clientId === clientId).forEach(r => rows.push({ id: r.id, type: 'return', ts: r.ts, label: `مرتجع: ${r.qty} × ${r.productName} بسعر ${fmtCur(r.unitPrice)}`, debit: 0, credit: r.amount }));
-  rows.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  // ✅ الترتيب: الأحدث في الأعلى
+  rows.sort((a, b) => (b.ts || 0) - (a.ts || 0));
   $('ledgerTableBody').innerHTML = rows.map(r => `
     <tr class="border-b border-slate-100 hover:bg-slate-50">
       <td class="p-3 text-slate-500 whitespace-nowrap">${r.ts ? new Date(r.ts).toLocaleString('ar-SY') : '—'}</td>
@@ -1251,7 +1177,6 @@ async function submitClientReturn(clientId, productName, unitPrice, unitCost, ke
   const profitAdjustment = roundMoney((toNum(unitPrice) - toNum(unitCost)) * qty);
   const newReturn = { id: 'RET-' + Date.now(), ts: Date.now(), date: nowStr(), clientId, clientName: client.name, productName, qty, unitPrice, unitCost: toNum(unitCost), amount, profitAdjustment, returnKey: key, productId: productId || '' };
   state.returns.push(newReturn);
-  // إعادة الكمية إلى المخزون
   const stockSnapshots = [];
   if (productId) {
     const p = state.products.find(x => x.id === productId);
@@ -1638,7 +1563,6 @@ function renderInvoicesTable() {
   const statusFilter = $('invoiceStatusFilter')?.value || 'all';
   const fromDate = $('invoiceFromDate')?.value || '';
   const toDate = $('invoiceToDate')?.value || '';
-
   const invRows = state.invoices.map(inv => {
     const payKind = inv.status === 'cancelled' ? 'cancelled' : (toNum(inv.remaining) > 0 ? (toNum(inv.paid) > 0 ? 'partial' : 'debt') : 'cash');
     return { kind: 'invoice', id: inv.id, ts: inv.ts || 0, date: inv.date, clientName: inv.clientName, total: toNum(inv.total), paid: toNum(inv.paid), remaining: toNum(inv.remaining), profit: toNum(inv.profit), status: inv.status, filterCategory: payKind };
@@ -1647,14 +1571,12 @@ function renderInvoicesTable() {
     kind: 'direct', id: ds.id, ts: ds.ts || 0, date: ds.date, clientName: `بيع سريع (${ds.qty} × ${ds.name})`,
     total: toNum(ds.total), paid: toNum(ds.paid != null ? ds.paid : ds.total), remaining: toNum(ds.remaining || 0), profit: toNum(ds.profit), status: 'direct', filterCategory: 'cash'
   }));
-
   const allList = [...invRows, ...directRows].filter(row => {
     if (statusFilter !== 'all' && row.filterCategory !== statusFilter) return false;
     if (fromDate || toDate) { if (!row.ts) return false; const k = dayKey(row.ts || 0); if (fromDate && k < fromDate) return false; if (toDate && k > toDate) return false; }
     if (query && !(normalizeArabic(row.id).includes(query) || normalizeArabic(row.clientName).includes(query))) return false;
     return true;
   }).sort((a, b) => b.ts - a.ts);
-
   const activeSalesRows = allList.filter(r => r.status !== 'cancelled');
   const totalSales = sumList(activeSalesRows, r => r.total);
   const filteredReturns = state.returns.filter(r => {
@@ -1665,7 +1587,6 @@ function renderInvoicesTable() {
   const returnsProfitDeduction = sumList(filteredReturns, r => r.profitAdjustment);
   const totalProfit = roundMoney(sumList(activeSalesRows, r => r.profit) - returnsProfitDeduction);
   const totalRemaining = sumList(activeSalesRows, r => r.remaining);
-
   if ($('invoicesSummaryStrip')) {
     $('invoicesSummaryStrip').innerHTML = `
       <div class="bg-slate-50 border rounded-xl p-2"><span class="block text-xs text-slate-500">عدد السجلات</span><span class="font-bold text-slate-800">${fmt(allList.length)}</span></div>
@@ -1673,13 +1594,10 @@ function renderInvoicesTable() {
       <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-2"><span class="block text-xs text-indigo-700">الربح</span><span class="font-bold text-indigo-900">${fmtCur(totalProfit)}</span></div>
       <div class="bg-rose-50 border border-rose-200 rounded-xl p-2"><span class="block text-xs text-rose-700">المتبقي (ديون)</span><span class="font-bold text-rose-700">${fmtCur(totalRemaining)}</span></div>`;
   }
-
-  // ✅ Pagination
   const totalPages = Math.max(1, Math.ceil(allList.length / INVOICES_PER_PAGE));
   if (currentInvoicePage > totalPages) currentInvoicePage = totalPages;
   const start = (currentInvoicePage - 1) * INVOICES_PER_PAGE;
   const list = allList.slice(start, start + INVOICES_PER_PAGE);
-
   $('invoicesTableBody').innerHTML = list.map(row => {
     if (row.kind === 'direct') {
       return `<tr class="hover:bg-amber-50/40 border-b border-slate-100 bg-amber-50/20">
@@ -1712,8 +1630,6 @@ function renderInvoicesTable() {
       </td>
     </tr>`;
   }).join('') || `<tr><td colspan="9" class="p-6 text-center text-slate-400 text-sm">لا توجد سجلات مطابقة</td></tr>`;
-
-  // أزرار الترقيم
   if ($('invoicesPagination')) {
     $('invoicesPagination').innerHTML = `
       <button onclick="changeInvoicePage(-1)" ${currentInvoicePage <= 1 ? 'disabled' : ''} class="px-3 py-1.5 bg-white border rounded-lg font-bold disabled:opacity-50">السابق</button>
@@ -1761,7 +1677,6 @@ function cancelInvoice(id) {
       state.payments.push({ id: 'REFUND-' + Date.now(), ts: Date.now(), date: nowStr(), clientId: inv.clientId, amount: -paidAmount, note: `استرداد فاتورة ملغاة ${inv.id}` });
       refundNote = ` — استرداد ${fmtCur(paidAmount)}`;
     }
-    // إعادة المخزون
     inv.items.forEach(it => {
       if (!it.productId || it.isQuickOnly) return;
       const p = state.products.find(x => x.id === it.productId);
@@ -1955,8 +1870,13 @@ function importDataBackup(ev) {
           if (!res.isConfirmed) return;
           const keepPin = state.pinHash, keepLen = state.pinLength, keepSalt = state.pinSalt;
           state = Object.assign(defaultState(), incoming);
-          ['returns', 'directSales', 'noInvoiceItems', 'companies', 'payments', 'expenses', 'invoices', 'purchases', 'companyPayments', 'personDebts', 'orders', 'stockMovements', 'tombstones'].forEach(k => { if (!Array.isArray(state[k])) state[k] = []; });
+          ['returns', 'directSales', 'noInvoiceItems', 'companies', 'payments', 'expenses', 'invoices', 'purchases', 'companyPayments', 'personDebts', 'orders', 'stockMovements', 'tombstones', 'trash'].forEach(k => { if (!Array.isArray(state[k])) state[k] = []; });
           state.clients.forEach(c => { if (!c.customPrices || typeof c.customPrices !== 'object') c.customPrices = {}; });
+          state.products.forEach(p => {
+            if (typeof p.trackStock !== 'boolean') p.trackStock = false;
+            if (typeof p.stock !== 'number') p.stock = 0;
+            if (typeof p.minStock !== 'number') p.minStock = 5;
+          });
           state.pinHash = keepPin; state.pinLength = keepLen || 4; state.pinSalt = keepSalt || state.pinSalt;
           state.cart = []; state.customPricesEditing = null;
           const maxInvNum = Math.max(1000, ...state.invoices.map(i => parseInt(String(i.id).replace(/\D/g, ''), 10) || 0));
@@ -1985,7 +1905,6 @@ function showReceiptModal(inv) {
   const totalDebt = client.id ? getClientDebt(client.id) : 0;
   const hasDebt = totalDebt > 0 || toNum(inv.remaining) > 0;
   const change = toNum(inv.changeGiven);
-
   $('recStoreName').textContent = state.storeInfo.name || 'مركز عاشور للتجارة';
   $('recStorePhone').textContent = `هاتف: ${state.storeInfo.phone || '-'}`;
   $('recStoreAddress').textContent = `العنوان: ${state.storeInfo.address || '-'}`;
@@ -1993,23 +1912,17 @@ function showReceiptModal(inv) {
   $('recDate').textContent = inv.date;
   $('recClient').textContent = inv.clientName;
   $('recPriceMode').textContent = inv.priceMode || 'تجزئة';
-
   $('recItemsBody').innerHTML = inv.items.map(i => `<tr class="border-b border-slate-200"><td class="py-1 font-bold">${esc(i.name)}</td><td class="py-1 text-center">${fmt(i.qty)}</td><td class="py-1 text-left">${fmt(i.price)}</td><td class="py-1 text-left font-bold">${fmt(i.total)}</td></tr>`).join('');
-
   if (toNum(inv.discount) > 0) { $('recDiscountRow').classList.remove('hidden'); $('recDiscount').textContent = fmtCur(inv.discount); }
   else $('recDiscountRow').classList.add('hidden');
-
   $('recTotal').textContent = fmtCur(inv.total);
   $('recPaidRow').classList.toggle('hidden', !hasDebt && change <= 0);
   $('recRemainingRow').classList.toggle('hidden', !hasDebt);
   $('recTotalDebtRow').classList.toggle('hidden', !hasDebt);
   $('recChangeRow').classList.toggle('hidden', !(change > 0));
-
   if (hasDebt || change > 0) $('recPaid').textContent = fmtCur(inv.paid);
   if (hasDebt) { $('recRemaining').textContent = fmtCur(inv.remaining); $('recTotalClientDebt').textContent = fmtCur(totalDebt); }
   if (change > 0) $('recChange').textContent = fmtCur(change);
-
-  // علامة "فاتورة ملغاة"
   const old = $('recCancelled'); if (old) old.remove();
   if (inv.status === 'cancelled') {
     const d = document.createElement('div');
@@ -2017,7 +1930,6 @@ function showReceiptModal(inv) {
     d.textContent = 'فاتورة ملغاة';
     $('recNum').closest('.space-y-1').before(d);
   }
-
   openModal('receiptModal');
 }
 function shareReceiptWhatsApp() {
@@ -2071,7 +1983,6 @@ async function shareReceiptImage() {
   } catch (_) { saveReceiptAsImage(); }
 }
 
-// ===== Modals =====
 function openModal(id) { const el = $(id); if (!el) return; el.classList.remove('hidden'); el.style.display = 'flex'; }
 function closeModal(id) { const el = $(id); if (!el) return; if (id === 'customPricesModal') state.customPricesEditing = null; el.classList.add('hidden'); el.style.display = 'none'; }
 
@@ -2263,7 +2174,6 @@ async function convertOrderToInvoice(orderId) {
   const client = state.clients.find(c => c.id === order.clientId);
   if (client) { $('posClientSelect').value = client.id; $('selectedClientText').textContent = client.name; }
   state.posPriceOverride = null;
-  // ✅ نحفظ hash السلة للتحقق من عدم تغيّرها عند الحفظ
   pendingOrder = { id: order.id, cartHash: computeCartHash(state.cart) };
   switchTab('pos'); renderCart();
   toast('أكمل الفاتورة واضغط حفظ، وسيُغلق الطلب بعدها', 'info');
@@ -2407,7 +2317,7 @@ async function saveReceiveStock() {
   const note = await Swal.fire({ title: 'ملاحظات الاستلام', input: 'text', inputPlaceholder: 'اسم المورد أو رقم الفاتورة (اختياري)', showCancelButton: true, confirmButtonText: 'حفظ', cancelButtonText: 'إلغاء', confirmButtonColor: '#10b981' });
   if (!note.isConfirmed) return;
   const noteText = note.value || 'استلام بضاعة';
-  const snapshot = entries.map(([pid, qty]) => {
+  const snapshot = entries.map(([pid]) => {
     const p = state.products.find(x => x.id === pid);
     return p ? { p, before: toNum(p.stock) } : null;
   }).filter(Boolean);
@@ -2466,7 +2376,6 @@ async function restoreTrash(i) {
   if (!Array.isArray(state[t.col])) state[t.col] = [];
   if (!state[t.col].some(x => String(x.id) === String(t.rec.id))) {
     state[t.col].push(t.rec);
-    // إزالة الـ tombstone
     state.tombstones = (state.tombstones || []).filter(tb => !(tb.col === t.col && String(tb.id) === String(t.rec.id)));
   }
   state.trash.splice(i, 1);
@@ -2475,7 +2384,6 @@ async function restoreTrash(i) {
   Swal.close(); toast('تمت الاستعادة');
 }
 
-// ===== Factory reset (نهائي وآمن: يشمل تسجيل الخروج من Firebase) =====
 async function factoryReset() {
   const res = await Swal.fire({
     title: 'تصفير النظام؟', text: 'سيتم حذف جميع البيانات نهائياً وتسجيل الخروج. لا يمكن التراجع!',
@@ -2485,15 +2393,12 @@ async function factoryReset() {
     preConfirm: v => v === 'DELETE' ? true : Swal.showValidationMessage('اكتب DELETE بالأحرف الكبيرة')
   });
   if (!res.isConfirmed) return;
-  try {
-    if (window.firebaseAuth && window.firebaseSignOut) await window.firebaseSignOut(window.firebaseAuth);
-  } catch (_) {}
+  try { if (window.firebaseAuth && window.firebaseSignOut) await window.firebaseSignOut(window.firebaseAuth); } catch (_) {}
   localStorage.clear();
   if (window.indexedDB) indexedDB.deleteDatabase('ashour_pos_db');
   Swal.fire('تم التصفير', 'سيتم إعادة تحميل الصفحة الآن لتبدأ من جديد.', 'success').then(() => location.reload());
 }
 
-// ===== Cookie products (مرة واحدة فقط) =====
 async function ensureCookieProducts() {
   const flag = 'ashour_cookies_done_v2';
   if (localStorage.getItem(flag)) return;
@@ -2518,7 +2423,6 @@ function addCookieProduct(price) {
   if (product) addToCart(product.id); else addQuickCookie(price);
 }
 
-// ===== Render All =====
 function renderAll(opts = {}) {
   const skip = Array.isArray(opts.skip) ? opts.skip : [];
   const should = n => !skip.includes(n);
@@ -2537,13 +2441,11 @@ function renderAll(opts = {}) {
   if (!$('view-reports').classList.contains('hidden')) renderReports();
 }
 
-// ===== PIN Banner =====
 async function ensurePinChangedBanner() {
   if ((await hashPin('1234', state.pinSalt)) !== state.pinHash) return;
   const banner = $('pinDefaultBanner'); if (banner) banner.classList.remove('hidden');
 }
 
-// ===== Init =====
 window.addEventListener('DOMContentLoaded', async function () {
   await loadFromStorage();
   refreshCategoryWidgets();
