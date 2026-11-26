@@ -268,7 +268,10 @@
     if (paidRaw !== '' && toNum(paidRaw) < total) {
       return warn('الدفع ناقص', 'البيع السريع نقدي بالكامل. للبيع الآجل استخدم الكاشير مع اختيار زبون.', 'info');
     }
-    const sale = { id: 'QS-' + Date.now(), ts: Date.now(), date: nowStr(), name, price, qty, total, paid: total, remaining: 0, profit: total };
+    const costRaw = $('dsCost') ? $('dsCost').value.trim() : '';
+    const unitCost = costRaw === '' ? null : toNum(costRaw);
+    const profit = unitCost == null ? 0 : roundMoney(total - calcLineTotal(unitCost, qty));   // بدون تكلفة: لا يُحسب ربح
+    const sale = { id: 'QS-' + Date.now(), ts: Date.now(), date: nowStr(), name, price, qty, total, paid: total, remaining: 0, profit, cost: unitCost };
     state.directSales.push(sale);
     logAudit('بيع سريع', `${qty} × ${name} بقيمة ${fmtCur(total)}`);
     if (!(await saveToStorage())) { state.directSales.pop(); return; }
@@ -485,6 +488,134 @@
     }
   };
 
+  /* ---------- 14) علامة ' في الأسماء لم تعد تكسر الأزرار ---------- */
+  window.esc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"'\\]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#8217;', '\\': '&#8726;' }[c]));
+  };
+  const plainQ = s => String(s).replace(/'/g, '\u2019');
+  const realCat = cat => allCategories().find(c => plainQ(c) === cat) || cat;
+  const _setCat = window.setPosCat;
+  window.setPosCat = function (cat) { _setCat(realCat(cat)); };
+  const _selCat = window.selectProdCat;
+  window.selectProdCat = function (cat) { _selCat(realCat(cat)); };
+
+  /* ---------- 15) السلة كجدول: الصنف | الكمية | السعر | الإجمالي | حذف ---------- */
+  const _renderCart = window.renderCart;
+  window.renderCart = function () {
+    _renderCart();
+    const box = $('cartItemsList');
+    if (!box || !state.cart.length) return;
+    const btn = 'w-6 h-6 bg-slate-200 rounded text-xs font-bold';
+    const rows = state.cart.map(item => {
+      const i = getCartItemInfo(item);
+      if (!i) return '';
+      const k = esc(i.key);
+      return `<tr class="border-b border-slate-100 num-tabular">
+        <td class="py-2 pr-1 font-bold text-xs">${esc(i.name)}${i.isCustom ? ' <span class="text-[10px] bg-purple-100 text-purple-800 px-1 rounded">خاص</span>' : ''}</td>
+        <td class="py-2"><div class="flex items-center justify-center gap-1">
+          <button onclick="updateCartQty('${k}',-1)" class="${btn} hover:bg-rose-500 hover:text-white">−</button>
+          <input type="number" min="0" step="any" value="${item.qty}" onchange="setCartItemQtyDirect('${k}',this.value)" class="w-12 text-center bg-slate-50 border border-slate-300 rounded text-xs font-bold py-0.5">
+          <button onclick="updateCartQty('${k}',1)" class="${btn} hover:bg-ashour hover:text-white">+</button></div></td>
+        <td class="py-2 text-center text-xs">${fmt(i.unitPrice)}</td>
+        <td class="py-2 text-left text-xs font-bold text-ashour">${fmt(calcLineTotal(i.unitPrice, item.qty))}</td>
+        <td class="py-2 text-center"><button onclick="setCartItemQtyDirect('${k}',0)" title="حذف" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash text-xs"></i></button></td></tr>`;
+    }).join('');
+    box.innerHTML = `<table class="w-full text-right"><thead><tr class="text-[11px] text-slate-500 border-b">
+      <th class="pb-1 pr-1">الصنف</th><th class="pb-1 text-center">الكمية</th><th class="pb-1 text-center">السعر</th><th class="pb-1 text-left">الإجمالي</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+  };
+
+  /* ---------- 16) التكلفة في البيع السريع والمنتج السريع (لا ربح وهمي) ---------- */
+  function costField(id, label) {
+    const d = document.createElement('div');
+    d.innerHTML = `<label class="block mb-1 text-slate-500 text-xs">${label}</label><input type="number" step="any" id="${id}" placeholder="اختياري — بدونها لا يُحسب ربح" class="w-full bg-slate-50 border rounded-xl p-2 text-xs">`;
+    return d;
+  }
+  whenReady(() => $('dsSummaryText') && $('qpBarcode'), () => {
+    if (!$('dsCost')) $('dsSummaryText').before(costField('dsCost', 'تكلفة الوحدة:'));
+    if (!$('qpCost')) $('qpBarcode').parentElement.before(costField('qpCost', 'تكلفة الوحدة:'));
+  });
+  const _openDS = window.openDirectSaleModal;
+  window.openDirectSaleModal = function () { _openDS(); if ($('dsCost')) $('dsCost').value = ''; };
+  const _openQP = window.openQuickProductModal;
+  window.openQuickProductModal = function (b) { _openQP(b); if ($('qpCost')) $('qpCost').value = ''; };
+  const _saveQP = window.saveQuickProduct;
+  window.saveQuickProduct = function () {
+    const raw = $('qpCost') ? $('qpCost').value.trim() : '';
+    const before = state.cart.length;
+    _saveQP();
+    if (raw !== '' && state.cart.length > before) state.cart[state.cart.length - 1].cost = toNum(raw);
+    renderCart();
+  };
+  // سطر بدون تكلفة معروفة: تكلفته = سعره (ربحه صفر) بدل أن يُحسب كله ربحاً
+  const _info = window.getCartItemInfo;
+  window.getCartItemInfo = function (item) {
+    const r = _info(item);
+    if (r && item.isQuickOnly) r.unitCost = item.cost != null ? toNum(item.cost) : toNum(item.price);
+    return r;
+  };
+
+  /* ---------- 17) الرصيد الدائن للزبون (له علينا) يظهر في كشف الحساب ---------- */
+  const _ledger = window.renderLedgerSummary;
+  window.renderLedgerSummary = function (clientId) {
+    _ledger(clientId);
+    const c = state.clients.find(x => x.id === clientId);
+    if (!c) return;
+    const bal = roundMoney(
+      toNum(c.openingDebt) +
+      sumList(state.invoices.filter(i => i.clientId === clientId && i.status === 'active'), i => i.remaining) -
+      sumList(state.payments.filter(p => p.clientId === clientId && toNum(p.amount) > 0), p => p.amount) -
+      sumList(state.returns.filter(r => r.clientId === clientId), r => r.amount)
+    );
+    if (bal < 0) {
+      $('ledgerSummaryCards').insertAdjacentHTML('beforeend',
+        `<div class="bg-white border border-emerald-300 rounded-xl p-3 shadow-sm col-span-2 md:col-span-4"><span class="block text-xs text-emerald-700">رصيد دائن للزبون (له علينا)</span><span class="text-sm font-bold text-emerald-700">${fmtCur(-bal)}</span></div>`);
+    }
+  };
+
+  /* ---------- 18) قراءة آمنة + تغيير PIN الافتراضي + منتجات البسكويت مرة واحدة ---------- */
+  window.loadFromStorage = async function () {
+    const result = await AshourDB.load();
+    if (!result.ok && result.error) {
+      // فشلت القراءة (وليس أن البيانات غير موجودة): لا نكتب حالة فارغة فوق بياناتك
+      await Swal.fire({ icon: 'error', title: 'تعذّر قراءة البيانات', text: 'لم يتغيّر شيء. أغلق التطبيق وأعد فتحه، وإن تكرر الأمر فاستعد من نسخة احتياطية.', allowOutsideClick: false, confirmButtonColor: '#d33' });
+      throw new Error('load failed');
+    }
+    state = (result.ok && result.state) ? deepMerge(defaultState(), result.state) : defaultState();
+    ['returns', 'directSales', 'noInvoiceItems', 'companies', 'payments', 'expenses', 'invoices', 'products', 'clients', 'purchases', 'companyPayments', 'personDebts', 'orders', 'trash']
+      .forEach(k => { if (!Array.isArray(state[k])) state[k] = []; });
+    state.clients.forEach(c => { if (!c.customPrices || typeof c.customPrices !== 'object') c.customPrices = {}; });
+    if (!state.invoiceCounter) state.invoiceCounter = 1000;
+    if (!state.pinSalt) state.pinSalt = generateSalt();
+    if (!state.pinHash) { state.pinHash = await hashPin('1234', state.pinSalt); state.pinLength = 4; }
+    if (!state.pinLength) state.pinLength = 4;
+    await saveToStorage();
+    startAutoBackup();
+  };
+
+  async function ensurePinChanged() {
+    if ((await hashPin('1234', state.pinSalt)) !== state.pinHash) return;
+    const r = await Swal.fire({
+      icon: 'warning', title: 'غيّر رمز PIN الافتراضي', text: 'الرمز الحالي 1234 معروف للجميع. اختر رمزاً من 4 إلى 6 أرقام.',
+      input: 'password', inputAttributes: { maxlength: 6, inputmode: 'numeric' },
+      showCancelButton: true, confirmButtonText: 'حفظ', cancelButtonText: 'لاحقاً', confirmButtonColor: '#0F5C4E',
+      inputValidator: v => (/^\d{4,6}$/.test(v || '') && v !== '1234') ? null : 'من 4 إلى 6 أرقام وغير 1234'
+    });
+    if (!r.isConfirmed) return;
+    state.pinHash = await hashPin(r.value, state.pinSalt);
+    state.pinLength = r.value.length;
+    logAudit('تغيير PIN', 'تغيير الرمز الافتراضي');
+    if (await saveToStorage()) { buildPinDots(); toast('تم تغيير PIN'); }
+  }
+
+  // كانت تعود المنتجات المحذوفة (بسكويت 200/300/500) عند كل تشغيل
+  const _cookies = window.ensureCookieProducts;
+  window.ensureCookieProducts = async function () {
+    if (localStorage.getItem('ashour_cookies_done')) return;
+    await _cookies();
+    localStorage.setItem('ashour_cookies_done', '1');
+  };
+
   /* ---------- تركيب الواجهة ---------- */
   function whenReady(cond, fn, tries = 200) {
     const t = setInterval(() => {
@@ -547,5 +678,5 @@
     renderAll();
   }
   whenReady(() => typeof state === 'object' && Array.isArray(state.products) && $('setStoreName'), mountUI);
-  whenReady(() => typeof state === 'object' && Array.isArray(state.products) && $('pinOverlay') && $('pinOverlay').classList.contains('hidden'), cleanStartOnce);
+  whenReady(() => typeof state === 'object' && Array.isArray(state.products) && $('pinOverlay') && $('pinOverlay').classList.contains('hidden'), async () => { await cleanStartOnce(); await ensurePinChanged(); });
 })();
