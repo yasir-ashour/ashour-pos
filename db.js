@@ -222,18 +222,18 @@
     },
 
     async testCapacity() {
-      const start = performance.now();
-      const fake = { invoices: [], products: [], clients: [] };
-      for (let i = 0; i < 5000; i++) fake.invoices.push({ id: 'TEST-' + i, ts: Date.now(), clientId: 'c1', clientName: 'اختبار', total: Math.random() * 100000, paid: 0, remaining: 0, items: [{ name: 'منتج اختبار', qty: 1, price: 100, total: 100 }] });
-      for (let i = 0; i < 500; i++) fake.products.push({ id: String(i), sku: String(i), name: 'منتج ' + i, cost: 100, retailPrice: 150, wholesalePrice: 130 });
-      const payload = { test: fake, ts: Date.now() };
-      const sizeKB = Math.round(new Blob([JSON.stringify(payload)]).size / 1024);
-      let okIDB = false, okLS = false, err = null;
-      try { await put(STORE_MAIN, 'capacity_test', payload); okIDB = true; await del(STORE_MAIN, 'capacity_test'); } catch (e) { err = 'IndexedDB: ' + e.message; }
-      try { const k = '__capacity_test__'; localStorage.setItem(k, JSON.stringify(payload)); localStorage.removeItem(k); okLS = true; } catch (e) { err = (err || '') + ' localStorage: ' + e.message; }
-      return { ok: okIDB || okLS, okIDB, okLS, sizeKB, ms: Math.round(performance.now() - start), error: err };
-    },
-
+  const start = performance.now();
+  const fake = { invoices: [], products: [], clients: [] };
+  // تم تخفيف العدد من 5000 إلى 300 لتجنب تجميد الأجهزة القديمة
+  for (let i = 0; i < 300; i++) fake.invoices.push({ id: 'TEST-' + i, ts: Date.now(), clientId: 'c1', clientName: 'اختبار', total: Math.random() * 100000, paid: 0, remaining: 0, items: [{ name: 'منتج اختبار', qty: 1, price: 100, total: 100 }] });
+  for (let i = 0; i < 100; i++) fake.products.push({ id: String(i), sku: String(i), name: 'منتج ' + i, cost: 100, retailPrice: 150, wholesalePrice: 130 });
+  const payload = { test: fake, ts: Date.now() };
+  const sizeKB = Math.round(new Blob([JSON.stringify(payload)]).size / 1024);
+  let okIDB = false, okLS = false, err = null;
+  try { await put(STORE_MAIN, 'capacity_test', payload); okIDB = true; await del(STORE_MAIN, 'capacity_test'); } catch (e) { err = 'IndexedDB: ' + e.message; }
+  try { const k = '__capacity_test__'; localStorage.setItem(k, JSON.stringify(payload)); localStorage.removeItem(k); okLS = true; } catch (e) { err = (err || '') + ' localStorage: ' + e.message; }
+  return { ok: okIDB || okLS, okIDB, okLS, sizeKB, ms: Math.round(performance.now() - start), error: err };
+}
     // سجل التدقيق الدائم (لا يُقصّ عند 500 كما في state.auditLog)
     async addAudit(entry) {
       try { await put(STORE_AUDIT, null, entry); } catch (_) {}
