@@ -1,10 +1,10 @@
 // sw.js — مركز عاشور POS
-const VERSION = 'v13';
+const VERSION = 'v14';
 const CACHE_NAME = 'ashour-pos-' + VERSION;
 const NETWORK_TIMEOUT_MS = 4000;
 
 const CORE_ASSETS = [
-  './', './index.html', './app.js', './db.js', './firebase-sync.js', './ashour-fixes.js',
+  './', './index.html', './app.js', './db.js', './firebase-sync.js', './ashour-fixes.js', './updates.js',
   './manifest.json', './icon-192.png', './icon-512.png', './maskable-512.png', './icon.svg'
 ];
 
@@ -13,6 +13,8 @@ const CDN_ASSETS = [
   'https://cdn.jsdelivr.net/npm/sweetalert2@11',
   'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',
   'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
+  'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js',
+  'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
   'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@500;600;700&family=Cairo:wght@600;800&family=Montserrat:wght@700;800&display=swap',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js',
@@ -20,10 +22,7 @@ const CDN_ASSETS = [
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
 ];
 
-const CDN_HOSTS = [
-  'cdn.tailwindcss.com', 'cdn.jsdelivr.net', 'unpkg.com',
-  'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'
-];
+const CDN_HOSTS = ['cdn.tailwindcss.com', 'cdn.jsdelivr.net', 'unpkg.com', 'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 
 function isCdn(url) {
   if (url.hostname === 'www.gstatic.com') return url.pathname.startsWith('/firebasejs/');
@@ -53,9 +52,7 @@ self.addEventListener('activate', (event) => {
   })());
 });
 
-self.addEventListener('message', (event) => {
-  if (event.data === 'SKIP_WAITING') self.skipWaiting();
-});
+self.addEventListener('message', (event) => { if (event.data === 'SKIP_WAITING') self.skipWaiting(); });
 
 function fetchFresh(req, ms) {
   const ctrl = new AbortController();
