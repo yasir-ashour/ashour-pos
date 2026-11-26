@@ -1,24 +1,152 @@
-/* updates.js — تصميم داكن + QR + PDF + reset PIN + نسخة تلقائية + تشفير */
+/* updates.js — تصميم داكن + QR + PDF + reset PIN + نسخة تلقائية + تشفير + دخول 1234 */
 (function () {
   'use strict';
 
+  const SITE_PASSCODE = '1234';
+  const AUTH_SESSION_KEY = 'ashour_site_unlocked_v2';
   const params = new URLSearchParams(location.search);
 
+  function unlockNativePinOverlay() {
+    const pinOverlay = document.getElementById('pinOverlay');
+    if (pinOverlay) {
+      pinOverlay.classList.add('hidden');
+      pinOverlay.style.display = 'none';
+    }
+    if (typeof state === 'object' && state) {
+      state.pinAttempts = 0;
+      state.pinLockUntil = 0;
+    }
+  }
+
+  function removeLoginGate() {
+    const gate = document.getElementById('sitePasscodeOverlay');
+    if (gate) gate.remove();
+    unlockNativePinOverlay();
+  }
+
+  function showSiteLoginGate() {
+    if (sessionStorage.getItem(AUTH_SESSION_KEY) === '1') {
+      unlockNativePinOverlay();
+      return;
+    }
+    if (document.getElementById('sitePasscodeOverlay')) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'sitePasscodeOverlay';
+    overlay.style.cssText = [
+      'position:fixed',
+      'inset:0',
+      'z-index:99999',
+      'background:linear-gradient(180deg,#0F2D3D 0%,#0A1E2A 100%)',
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+      'padding:16px',
+      'font-family:inherit',
+      'direction:rtl'
+    ].join(';');
+
+    overlay.innerHTML = `
+      <div style="width:100%;max-width:360px;background:#ffffff;border-radius:18px;padding:24px;box-shadow:0 20px 45px rgba(0,0,0,0.4);text-align:center;">
+        <div style="width:54px;height:54px;margin:0 auto 12px;border-radius:14px;background:#0F5C4E;color:#ffffff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <h2 style="margin:0 0 6px;font-size:19px;font-weight:800;color:#0F2D3D;">مركز عاشور</h2>
+        <p style="margin:0 0 16px;font-size:13px;color:#475569;font-weight:600;">أدخل رمز الدخول (1234) للمتابعة</p>
+        <form id="sitePasscodeForm">
+          <input
+            id="sitePasscodeInput"
+            type="password"
+            inputmode="numeric"
+            autocomplete="current-password"
+            placeholder="••••"
+            style="width:100%;box-sizing:border-box;padding:12px 14px;font-size:22px;letter-spacing:8px;text-align:center;border:2px solid #CBD5E1;border-radius:12px;outline:none;color:#0F2D3D;font-weight:800;"
+          />
+          <div id="sitePasscodeError" style="min-height:20px;margin-top:8px;font-size:12px;font-weight:700;color:#DC2626;"></div>
+          <button
+            type="submit"
+            style="width:100%;margin-top:6px;padding:12px 14px;border:none;border-radius:12px;background:#0F5C4E;color:#ffffff;font-size:14px;font-weight:800;cursor:pointer;"
+          >
+            دخول
+          </button>
+        </form>
+      </div>
+    `;
+
+    (document.body || document.documentElement).appendChild(overlay);
+
+    const form = overlay.querySelector('#sitePasscodeForm');
+    const input = overlay.querySelector('#sitePasscodeInput');
+    const errorEl = overlay.querySelector('#sitePasscodeError');
+
+    setTimeout(() => input && input.focus(), 60);
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const entered = (input.value || '').trim();
+      if (entered === SITE_PASSCODE) {
+        sessionStorage.setItem(AUTH_SESSION_KEY, '1');
+        removeLoginGate();
+      } else {
+        errorEl.textContent = 'رمز الدخول غير صحيح';
+        input.value = '';
+        input.focus();
+      }
+    });
+  }
+
+  function lockSiteAccess() {
+    sessionStorage.removeItem(AUTH_SESSION_KEY);
+    const pinOverlay = document.getElementById('pinOverlay');
+    if (pinOverlay) {
+      pinOverlay.classList.remove('hidden');
+      pinOverlay.style.display = '';
+    }
+    showSiteLoginGate();
+  }
+
   if (params.get('resetpin') === 'ashour2026') {
+    sessionStorage.removeItem(AUTH_SESSION_KEY);
     const tryReset = () => {
       if (typeof state === 'object' && state && typeof state.pinHash !== 'undefined') {
-        state.pinHash = null; state.pinSalt = null;
-        state.pinAttempts = 0; state.pinLockUntil = 0; state.pinLength = 4;
-        Promise.resolve(saveToStorage()).then(() => {
+        state.pinHash = null;
+        state.pinSalt = null;
+        state.pinAttempts = 0;
+        state.pinLockUntil = 0;
+        state.pinLength = 4;
+        const afterSave = () => {
           if (typeof Swal !== 'undefined') {
-            Swal.fire({ icon: 'success', title: 'تم', text: 'رمز PIN أُعيد إلى 1234. ستُعاد الصفحة الآن.', timer: 2000, showConfirmButton: false })
-              .then(() => { location.href = location.pathname; });
-          } else { alert('PIN = 1234'); location.href = location.pathname; }
-        });
-      } else { setTimeout(tryReset, 200); }
+            Swal.fire({
+              icon: 'success',
+              title: 'تم',
+              text: 'تمت إعادة ضبط الدخول. الرمز هو 1234.',
+              timer: 1800,
+              showConfirmButton: false
+            }).then(() => {
+              location.href = location.pathname;
+            });
+          } else {
+            alert('تمت إعادة الضبط — الرمز 1234');
+            location.href = location.pathname;
+          }
+        };
+        if (typeof saveToStorage === 'function') {
+          Promise.resolve(saveToStorage()).then(afterSave).catch(afterSave);
+        } else {
+          afterSave();
+        }
+      } else {
+        setTimeout(tryReset, 250);
+      }
     };
-    setTimeout(tryReset, 400);
+    setTimeout(tryReset, 500);
     return;
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', showSiteLoginGate, { once: true });
+  } else {
+    showSiteLoginGate();
   }
 
   if (params.get('statement')) {
@@ -27,8 +155,7 @@
       if (typeof state === 'object' && state && Array.isArray(state.clients)) {
         const c = state.clients.find(x => x.id === clientId);
         if (c && typeof openClientDetailPage === 'function') {
-          const pin = document.getElementById('pinOverlay');
-          if (pin && !pin.classList.contains('hidden')) { setTimeout(tryOpen, 800); return; }
+          if (sessionStorage.getItem(AUTH_SESSION_KEY) !== '1') { setTimeout(tryOpen, 800); return; }
           openClientDetailPage(clientId);
         }
       } else { setTimeout(tryOpen, 300); }
@@ -354,5 +481,6 @@
     }
   }, 800);
 
+  window.lockSiteAccess = lockSiteAccess;
   console.log('%c[updates.js] التحديثات جاهزة ✓', 'color:#14B8A6;font-weight:bold;font-size:13px');
 })();
