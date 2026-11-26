@@ -1,17 +1,22 @@
 /* ==========================================================================
-   db.js — محرك التخزين القوي (IndexedDB + localStorage)
+   db.js — محرك التخزين (IndexedDB + نسخة احتياطية في localStorage)
+   نفس الواجهة العامة السابقة (AshourDB.save / load / saveBackup / getStatus /
+   testCapacity / addAudit) مع إصلاحات داخلية.
    ========================================================================== */
 
 (function (global) {
   'use strict';
 
   const DB_NAME = 'ashour_pos_db';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;                    // كان 1: أُضيف مخزن audit_log
   const STORE_MAIN = 'main';
   const STORE_BACKUP = 'backup';
-  const STORE_AUDIT = 'audit';
+  const STORE_AUDIT = 'audit_log';         // المخزن القديم 'audit' كان لا يعمل (يبقى فارغاً ولا نلمسه)
   const LS_KEY = 'ashour_pos_db_v12';
-  const LS_BACKUP_KEY = 'ashour_pos_db_v12_mirror';
+  const LS_BACKUP_KEY = 'ashour_pos_db_v12_mirror';   // قديم: نقرأ منه فقط ونحذفه عند أول حفظ ناجح
+  const LS_MAX_CHARS = 2000000;            // لا نكتب في localStorage إن كانت البيانات أكبر من ذلك
+  const BACKUP_MIN_GAP_MS = 12 * 60 * 60 * 1000;   // نسخة داخلية كل 12 ساعة كحد أدنى
+  const BACKUP_KEEP = 14;                  // نحو 7 أيام
 
   let _db = null;
 
@@ -25,37 +30,64 @@
         const db = ev.target.result;
         if (!db.objectStoreNames.contains(STORE_MAIN)) db.createObjectStore(STORE_MAIN);
         if (!db.objectStoreNames.contains(STORE_BACKUP)) db.createObjectStore(STORE_BACKUP);
-        if (!db.objectStoreNames.contains(STORE_AUDIT)) db.createObjectStore(STORE_AUDIT, { keyPath: 'ts' });
+        if (!db.objectStoreNames.contains(STORE_AUDIT)) db.createObjectStore(STORE_AUDIT, { autoIncrement: true });
       };
-      req.onsuccess = (ev) => { _db = ev.target.result; resolve(_db); };
+      req.onsuccess = (ev) => {
+        _db = ev.target.result;
+        // عند ترقية القاعدة من نافذة أخرى أو إغلاقها من النظام: أغلق الاتصال وأعد فتحه لاحقاً
+        _db.onversionchange = () => { try { _db.close(); } catch (_) {} _db = null; };
+        _db.onclose = () => { _db = null; };
+        resolve(_db);
+      };
       req.onerror = (ev) => reject(ev.target.error);
+      req.onblocked = () => reject(new Error('IndexedDB محجوب: أغلق نوافذ التطبيق الأخرى'));
     });
   }
 
+  // ينفّذ عملية على القاعدة، ويعيد المحاولة مرة واحدة إن كان الاتصال مغلقاً
+  // (يحدث على بعض أجهزة iPhone بعد عودة التطبيق من الخلفية)
+  async function run(fn) {
+    try {
+      return await fn(await openDB());
+    } catch (e) {
+      if (e && (e.name === 'InvalidStateError' || e.name === 'UnknownError')) {
+        _db = null;
+        return await fn(await openDB());
+      }
+      throw e;
+    }
+  }
+
+  // key == null → إضافة بمفتاح تلقائي (مخزن audit_log)
   function put(storeName, key, value) {
-    return openDB().then(db => new Promise((resolve, reject) => {
+    return run((db) => new Promise((resolve, reject) => {
       const tx = db.transaction(storeName, 'readwrite');
-      tx.objectStore(storeName).put(value, key);
+      const store = tx.objectStore(storeName);
+      if (key == null) store.add(value); else store.put(value, key);
       tx.oncomplete = () => resolve(true);
       tx.onerror = (ev) => reject(ev.target.error);
+      // مهم: عند فشل الالتزام (مساحة ممتلئة مثلاً) يُطلق abort فقط، وبدونه يعلق الوعد للأبد
+      tx.onabort = () => reject(tx.error || new Error('تم إلغاء عملية التخزين'));
     }));
   }
 
   function get(storeName, key) {
-    return openDB().then(db => new Promise((resolve, reject) => {
+    return run((db) => new Promise((resolve, reject) => {
       const tx = db.transaction(storeName, 'readonly');
       const req = tx.objectStore(storeName).get(key);
       req.onsuccess = () => resolve(req.result);
       req.onerror = (ev) => reject(ev.target.error);
+      tx.onabort = () => reject(tx.error || new Error('تم إلغاء القراءة'));
     }));
   }
 
   function del(storeName, key) {
-    return openDB().then(db => new Promise((resolve, reject) => {
+    return run((db) => new Promise((resolve, reject) => {
       const tx = db.transaction(storeName, 'readwrite');
       tx.objectStore(storeName).delete(key);
       tx.oncomplete = () => resolve(true);
       tx.onerror = (ev) => reject(ev.target.error);
+      tx.onabort = () => reject(tx.error || new Error('تم إلغاء الحذف'));
     }));
   }
 
@@ -71,49 +103,82 @@
         okIndexedDB = true;
       } catch (e) { errors.push('IndexedDB: ' + e.message); }
 
+      // localStorage: نسخة واحدة فقط (كانت نسختين متطابقتين)، وللحجم المعقول فقط
       try {
         const json = JSON.stringify(state);
-        localStorage.setItem(LS_KEY, json);
-        localStorage.setItem(LS_BACKUP_KEY, json);
-        okLocalStorage = true;
+        if (json.length <= LS_MAX_CHARS || !okIndexedDB) {
+          localStorage.setItem(LS_KEY, json);
+          okLocalStorage = true;
+        } else {
+          localStorage.removeItem(LS_KEY);   // كبيرة: لا نترك نسخة قديمة قد تُستعاد بالخطأ
+        }
+        if (okIndexedDB) localStorage.removeItem(LS_BACKUP_KEY);
       } catch (e) { errors.push('localStorage: ' + e.message); }
 
       return { ok: okIndexedDB || okLocalStorage, okIndexedDB, okLocalStorage, errors };
     },
 
+    // تُستدعى من مؤقّت التطبيق كل 5 دقائق، لكن النسخة الفعلية لا تُؤخذ إلا كل 12 ساعة
     async saveBackup(state) {
       try {
+        const keys = await run((db) => new Promise((resolve, reject) => {
+          const req = db.transaction(STORE_BACKUP, 'readonly').objectStore(STORE_BACKUP).getAllKeys();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = (ev) => reject(ev.target.error);
+        }));
+        const lastTs = keys
+          .map((k) => parseInt(String(k).replace('backup_', ''), 10) || 0)
+          .sort((a, b) => b - a)[0] || 0;
+        if (Date.now() - lastTs < BACKUP_MIN_GAP_MS) return true;
+
         const serialized = JSON.parse(JSON.stringify(state));
         await put(STORE_BACKUP, 'backup_' + Date.now(), { ts: Date.now(), date: new Date().toISOString(), state: serialized });
-        await this._trimBackups(10);
+        await this._trimBackups(BACKUP_KEEP);
         return true;
       } catch (_) { return false; }
     },
 
     async _trimBackups(maxCount) {
       try {
-        const db = await openDB();
-        const tx = db.transaction(STORE_BACKUP, 'readwrite');
-        const store = tx.objectStore(STORE_BACKUP);
-        const req = store.getAllKeys();
-        req.onsuccess = () => {
-          const keys = req.result.sort();
-          const toDelete = keys.slice(0, Math.max(0, keys.length - maxCount));
-          toDelete.forEach(k => store.delete(k));
-        };
+        await run((db) => new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_BACKUP, 'readwrite');
+          const store = tx.objectStore(STORE_BACKUP);
+          const req = store.getAllKeys();
+          req.onsuccess = () => {
+            const keys = (req.result || []).slice().sort();
+            keys.slice(0, Math.max(0, keys.length - maxCount)).forEach((k) => store.delete(k));
+          };
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = (ev) => reject(ev.target.error);
+          tx.onabort = () => reject(tx.error);
+        }));
       } catch (_) {}
     },
 
+    // يطلب من المتصفح عدم مسح بيانات التطبيق عند امتلاء الجهاز
+    async requestPersistence() {
+      try {
+        if (navigator.storage && navigator.storage.persist) {
+          if (await navigator.storage.persisted()) return true;
+          return await navigator.storage.persist();
+        }
+      } catch (_) {}
+      return false;
+    },
+
     async load() {
+      this.requestPersistence();   // بلا انتظار
+      let readFailed = false;
+
       try {
         const data = await get(STORE_MAIN, 'state');
         if (data && typeof data === 'object') return { ok: true, source: 'indexeddb', state: data };
-      } catch (_) {}
+      } catch (_) { readFailed = true; }
 
       try {
         const raw = localStorage.getItem(LS_KEY) || localStorage.getItem(LS_BACKUP_KEY);
         if (raw) return { ok: true, source: 'localstorage', state: JSON.parse(raw) };
-      } catch (_) {}
+      } catch (_) { readFailed = true; }
 
       try {
         const db = await openDB();
@@ -127,14 +192,21 @@
           backups.sort((a, b) => (b.ts || 0) - (a.ts || 0));
           return { ok: true, source: 'backup', state: backups[0].state };
         }
-      } catch (_) {}
+      } catch (_) { readFailed = true; }
 
-      return { ok: false, state: null };
+      // error=true يعني أن القراءة فشلت (وليس أن البيانات غير موجودة): لا يجوز الكتابة فوق القاعدة
+      return { ok: false, state: null, error: readFailed };
     },
 
     async getStatus() {
       const status = { indexedDB: 'غير متاح', localStorage: 'غير متاح', localStorageSize: 0, estimate: null };
       try { await openDB(); status.indexedDB = 'متاح ✓'; } catch (_) { status.indexedDB = 'غير مدعوم'; }
+      try {
+        if (status.indexedDB.includes('✓') && navigator.storage && navigator.storage.persisted) {
+          const p = await navigator.storage.persisted();
+          status.indexedDB += p ? ' • تخزين دائم' : ' • قد يُمسح عند امتلاء الجهاز';
+        }
+      } catch (_) {}
       try {
         const raw = localStorage.getItem(LS_KEY);
         if (raw) { status.localStorage = 'متاح ✓'; status.localStorageSize = new Blob([raw]).size; }
@@ -162,8 +234,23 @@
       return { ok: okIDB || okLS, okIDB, okLS, sizeKB, ms: Math.round(performance.now() - start), error: err };
     },
 
+    // سجل التدقيق الدائم (لا يُقصّ عند 500 كما في state.auditLog)
     async addAudit(entry) {
-      try { await put(STORE_AUDIT, entry.ts || Date.now(), entry); } catch (_) {}
+      try { await put(STORE_AUDIT, null, entry); } catch (_) {}
+    },
+
+    async getAudit(limit = 500) {
+      try {
+        return await run((db) => new Promise((resolve, reject) => {
+          const out = [];
+          const req = db.transaction(STORE_AUDIT, 'readonly').objectStore(STORE_AUDIT).openCursor(null, 'prev');
+          req.onsuccess = () => {
+            const cur = req.result;
+            if (cur && out.length < limit) { out.push(cur.value); cur.continue(); } else resolve(out);
+          };
+          req.onerror = (ev) => reject(ev.target.error);
+        }));
+      } catch (_) { return []; }
     }
   };
 
