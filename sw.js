@@ -1,40 +1,116 @@
-const CACHE_NAME = 'ashour-pos-v10';
-const CORE_ASSETS = ['./', './index.html', './db.js', './app.js', './firebase-sync.js', './manifest.json'];
+// sw.js — مركز عاشور POS
+// غيّر VERSION عند تعديل قوائم الملفات أدناه (تعديل app.js وحده لا يحتاج ذلك)
+const VERSION = 'v12';
+const CACHE_NAME = 'ashour-pos-' + VERSION;
+const NETWORK_TIMEOUT_MS = 4000;
+
+// ملفات التطبيق (نفس النطاق)
+const CORE_ASSETS = [
+  './', './index.html', './app.js', './db.js', './firebase-sync.js', './ashour-fixes.js',
+  './manifest.json', './icon-192.png', './icon-512.png', './maskable-512.png', './icon.svg'
+];
+
+// مكتبات خارجية يحتاجها التطبيق ليعمل بدون إنترنت (نفس الروابط الموجودة في index.html)
+const CDN_ASSETS = [
+  'https://cdn.tailwindcss.com',
+  'https://cdn.jsdelivr.net/npm/sweetalert2@11',
+  'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',
+  'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+  'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@500;600;700&family=Cairo:wght@600;800&family=Montserrat:wght@700;800&display=swap',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
+];
+
+// المضيفات المسموح تخزينها. طلبات Firestore وتسجيل الدخول لا تُلمس إطلاقاً.
+const CDN_HOSTS = [
+  'cdn.tailwindcss.com', 'cdn.jsdelivr.net', 'unpkg.com',
+  'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'
+];
+
+function isCdn(url) {
+  if (url.hostname === 'www.gstatic.com') return url.pathname.startsWith('/firebasejs/');
+  return CDN_HOSTS.includes(url.hostname);
+}
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS).catch(() => {}))
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+
+    // كل ملف على حدة: فشل ملف واحد لا يلغي تخزين الباقي
+    await Promise.all(CORE_ASSETS.map((u) =>
+      cache.add(new Request(u, { cache: 'reload' })).catch(() => {})
+    ));
+
+    await Promise.all(CDN_ASSETS.map(async (u) => {
+      try {
+        let res = await fetch(u, { mode: 'cors' }).catch(() => null);
+        if (!res || !res.ok) res = await fetch(u, { mode: 'no-cors' });
+        await cache.put(u, res);
+      } catch (_) {}
+    }));
+  })());
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.map((key) => (key !== CACHE_NAME ? caches.delete(key) : Promise.resolve())))
-    )
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys
+      .filter((k) => k.startsWith('ashour-pos-') && k !== CACHE_NAME)
+      .map((k) => caches.delete(k)));
+    await self.clients.claim();
+  })());
 });
+
+function fetchFresh(req, ms) {
+  const ctrl = new AbortController();
+  const timer = ms > 0 ? setTimeout(() => ctrl.abort(), ms) : null;
+  return fetch(req, { cache: 'no-cache', signal: ctrl.signal })
+    .finally(() => { if (timer) clearTimeout(timer); });
+}
+
+// ملفات التطبيق: الشبكة أولاً (لتصلك التحديثات) مع مهلة، وإلا النسخة المخزنة
+async function networkFirst(req, event) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(req, { ignoreSearch: true });
+  try {
+    // إن لم توجد نسخة مخزنة ننتظر الشبكة بلا مهلة
+    const res = await fetchFresh(req, cached ? NETWORK_TIMEOUT_MS : 0);
+    if (res && res.status === 200) event.waitUntil(cache.put(req, res.clone()));
+    return res;
+  } catch (_) {
+    if (cached) return cached;
+    if (req.mode === 'navigate') {
+      const shell = await cache.match('./index.html');
+      if (shell) return shell;
+    }
+    return Response.error();
+  }
+}
+
+// المكتبات الخارجية: من الكاش فوراً وتُحدَّث في الخلفية
+async function staleWhileRevalidate(req, event) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(req);
+  const update = fetch(req).then((res) => {
+    if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone());
+    return res;
+  }).catch(() => null);
+  if (cached) { event.waitUntil(update); return cached; }
+  return (await update) || Response.error();
+}
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
-  const urlStr = req.url || '';
-  if (urlStr.includes('firebase') || urlStr.includes('googleapis.com') || urlStr.includes('gstatic.com')) return;
-  const isSameOrigin = urlStr.startsWith(self.location.origin);
-  if (isSameOrigin) {
-    event.respondWith(
-      fetch(req).then((networkRes) => {
-        if (networkRes && networkRes.status === 200) {
-          const copy = networkRes.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-        }
-        return networkRes;
-      }).catch(() =>
-        caches.match(req).then((cached) => cached || (req.mode === 'navigate' ? caches.match('./index.html') : undefined))
-      )
-    );
-    return;
+  const url = new URL(req.url);
+
+  if (url.origin === self.location.origin) {
+    event.respondWith(networkFirst(req, event));
+  } else if (isCdn(url)) {
+    event.respondWith(staleWhileRevalidate(req, event));
   }
+  // أي شيء آخر (Firestore, تسجيل الدخول...) يمر للشبكة كما هو
 });
