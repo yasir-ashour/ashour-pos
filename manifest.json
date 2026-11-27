@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "نظام الفوتير",
-  "short_name": "الفوتير",
-  "description": "نظام مركز عاشور",
+  "name": "نظام الفواتير - مركز عاشور",
+  "short_name": "الفواتير",
+  "description": "نظام نقاط البيع والمخزون والديون لمركز عاشور",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
