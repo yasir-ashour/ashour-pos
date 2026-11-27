@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="color-scheme" content="light only">
 <title>نظام الفواتير - مركز عاشور</title>
 <link rel="manifest" href="manifest.json">
@@ -20,6 +20,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script>
 tailwind.config = {
+  darkMode: 'class', /* تفعيل الوضع الليلي بشكل صحيح */
   theme: {
     extend: {
       colors: {
@@ -54,9 +55,7 @@ tailwind.config = {
     font-family: 'Inter', 'IBM Plex Sans Arabic', sans-serif;
     font-weight: 700;
     color: #0F172A;
-    transition: all 0.15s ease;
   }
-  input[type="date"]:focus, input[type="datetime-local"]:focus { outline: none; border-color: #0F5C4E; box-shadow: 0 0 0 3px rgba(15,92,78,0.12); }
 
   select {
     color-scheme: light !important;
@@ -72,8 +71,6 @@ tailwind.config = {
     color: #0F172A;
     -webkit-appearance: none; -moz-appearance: none; appearance: none;
   }
-  select:focus { outline: none; border-color: #0F5C4E; box-shadow: 0 0 0 3px rgba(15,92,78,0.12); }
-  .swal2-popup, .swal2-input, .swal2-select, .swal2-textarea { color-scheme: light !important; }
 
   #ashour-intro {
     position: fixed; inset: 0; z-index: 9999;
@@ -157,11 +154,14 @@ tailwind.config = {
     }
   }
   @media (min-width: 1366px) { #posProductsGrid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+  
+  /* إصلاح شبكة المنتجات للهواتف */
   @media (max-width: 640px) {
     #posProductsGrid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      max-height: none; /* على الهاتف نتركه يتمدد */
+      max-height: none; /* تمدد طبيعي بدون صندوق صغير */
       overflow-y: visible;
+      gap: 0.5rem;
     }
   }
 
@@ -191,21 +191,39 @@ tailwind.config = {
     .touch-btn { padding: 0.75rem 1rem !important; min-height: 48px; }
   }
 
-  /* قائمة همبرغر للشاشات الصغيرة */
-  #mobileMenuBtn { display: flex; }
-  #mobileMenuPanel { display: none; }
-  #mobileMenuPanel.open { display: flex; }
+  /* إصلاح قائمة الهامبرغر (تنزلق من اليمين) */
+  #mobileMenuPanel {
+    position: fixed;
+    top: 0; bottom: 0; right: 0;
+    width: 280px;
+    z-index: 100;
+    background: #0A3F35; /* ashour-dark */
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+  }
+  #mobileMenuPanel.open { transform: translateX(0) !important; }
+  
+  #mobileMenuBackdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 99;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  #mobileMenuBackdrop.open { opacity: 1; pointer-events: auto; }
+  
   @media (min-width: 1024px) {
-    #mobileMenuBtn { display: none !important; }
-    #mobileMenuPanel { display: none !important; }
+    #mobileMenuPanel, #mobileMenuBackdrop { display: none !important; }
   }
 
   /* الوضع الليلي */
   html.dark body { background: #0b1220; color: #e2e8f0; }
   html.dark .bg-white { background: #1e293b !important; color: #e2e8f0; }
   html.dark .bg-slate-50 { background: #0f172a !important; }
-  html.dark .bg-slate-100 { background: #1e293b !important; color: #cbd5e1; }
-  html.dark .bg-slate-200 { background: #334155 !important; color: #e2e8f0; }
+  html.dark .bg-slate-100 { background: #334155 !important; color: #cbd5e1; }
+  html.dark .bg-slate-200 { background: #475569 !important; color: #e2e8f0; }
   html.dark .text-slate-800 { color: #e2e8f0 !important; }
   html.dark .text-slate-700 { color: #cbd5e1 !important; }
   html.dark .text-slate-600 { color: #94a3b8 !important; }
@@ -291,7 +309,7 @@ tailwind.config = {
       </div>
     </div>
 
-    <nav class="hidden lg:flex items-center gap-1 overflow-x-auto py-1 text-sm font-semibold w-full xl:w-auto justify-start" style="scrollbar-width: none;">
+    <nav class="hidden xl:flex items-center gap-1 overflow-x-auto py-1 text-sm font-semibold w-full xl:w-auto justify-start" style="scrollbar-width: none;">
       <button onclick="switchTab('pos')" id="tab-pos" class="tab-btn active bg-white/20 px-3 py-1.5 rounded-lg whitespace-nowrap"><i class="fa-solid fa-cash-register"></i> الكاشير</button>
       <button onclick="switchTab('inventory')" id="tab-inventory" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-white/20 whitespace-nowrap relative">
         <i class="fa-solid fa-warehouse"></i> المخزون
@@ -319,24 +337,33 @@ tailwind.config = {
       <button onclick="lockApp()" class="bg-rose-500/90 hover:bg-rose-600 px-3 py-1.5 rounded-lg text-xs font-bold transition"><i class="fa-solid fa-lock"></i> قفل</button>
     </div>
   </div>
-
-  <!-- قائمة الهامبرغر للهاتف -->
-  <div id="mobileMenuPanel" class="xl:hidden hidden flex-col bg-ashour-dark text-white p-3 gap-1 text-sm font-bold border-t border-white/10 max-h-[70vh] overflow-y-auto">
-    <button onclick="switchTab('pos');closeMobileMenu()" class="text-right px-3 py-2.5 rounded-lg hover:bg-white/10 flex items-center gap-2"><i class="fa-solid fa-cash-register w-5"></i> الكاشير</button>
-    <button onclick="switchTab('inventory');closeMobileMenu()" class="text-right px-3 py-2.5 rounded-lg hover:bg-white/10 flex items-center gap-2"><i class="fa-solid fa-warehouse w-5"></i> المخزون</button>
-    <button onclick="switchTab('orders');closeMobileMenu()" class="text-right px-3 py-2.5 rounded-lg hover:bg-white/10 flex items-center gap-2"><i class="fa-solid fa-clipboard-list w-5"></i> الطلبات</button>
-    <button onclick="switchTab('invoices');closeMobileMenu()" class="text-right px-3 py-2.5 rounded-lg hover:bg-white/10 flex items-center gap-2"><i class="fa-solid fa-file-invoice w-5"></i> المبيعات</button>
-    <button onclick="switchTab('purchases');closeMobileMenu()" class="text-right px-3 py-2.5 rounded-lg hover:bg-white/10 flex items-center gap-2"><i class="fa-solid fa-cart-flatbed w-5"></i> المشتريات</button>
-    <button onclick="switchTab('products');closeMobileMenu()" class="text-right px-3 py-2.5 rounded-lg hover:bg-white/10 flex items-center gap-2"><i class="fa-solid fa-box w-5"></i> المنتجات</button>
-    <button onclick="switchTab('clients');closeMobileMenu()" class="text-right px-3 py-2.5 rounded-lg hover:bg-white/10 flex items-center gap-2"><i class="fa-solid fa-users w-5"></i> الزبائن</button>
-    <button onclick="switchTab('companies');closeMobileMenu()" class="text-right px-3 py-2.5 rounded-lg hover:bg-white/10 flex items-center gap-2"><i class="fa-solid fa-building w-5"></i> الشركات</button>
-    <button onclick="switchTab('debts');closeMobileMenu()" class="text-right px-3 py-2.5 rounded-lg hover:bg-white/10 flex items-center gap-2"><i class="fa-solid fa-hand-holding-dollar w-5"></i> ديون الأشخاص</button>
-    <button onclick="switchTab('expenses');closeMobileMenu()" class="text-right px-3 py-2.5 rounded-lg hover:bg-white/10 flex items-center gap-2"><i class="fa-solid fa-wallet w-5"></i> المصاريف</button>
-    <button onclick="switchTab('reports');closeMobileMenu()" class="text-right px-3 py-2.5 rounded-lg hover:bg-white/10 flex items-center gap-2"><i class="fa-solid fa-chart-line w-5"></i> التقارير</button>
-    <button onclick="switchTab('settings');closeMobileMenu()" class="text-right px-3 py-2.5 rounded-lg hover:bg-white/10 flex items-center gap-2"><i class="fa-solid fa-gear w-5"></i> الإعدادات</button>
-    <button onclick="exportDataBackup();closeMobileMenu()" class="text-right px-3 py-2.5 rounded-lg hover:bg-white/10 flex items-center gap-2"><i class="fa-solid fa-cloud-arrow-down w-5"></i> نسخة احتياطية</button>
-  </div>
 </header>
+
+<!-- قائمة الهامبرغر المنزلقة (Side Drawer) + الخلفية المعتمة -->
+<div id="mobileMenuBackdrop" onclick="closeMobileMenu()"></div>
+<div id="mobileMenuPanel" class="text-white p-4 text-sm font-bold shadow-2xl">
+  <div class="flex justify-between items-center mb-4 pb-3 border-b border-white/20 shrink-0">
+    <span class="text-lg text-ashour-gold font-bold">القائمة الرئيسية</span>
+    <button onclick="closeMobileMenu()" class="text-white hover:text-rose-500 text-2xl transition">&times;</button>
+  </div>
+  <div class="flex-1 overflow-y-auto space-y-1">
+    <button onclick="switchTab('pos');closeMobileMenu()" class="w-full text-right px-3 py-3 rounded-lg hover:bg-white/10 flex items-center gap-3 transition"><i class="fa-solid fa-cash-register w-5 text-center"></i> الكاشير</button>
+    <button onclick="switchTab('inventory');closeMobileMenu()" class="w-full text-right px-3 py-3 rounded-lg hover:bg-white/10 flex items-center gap-3 transition"><i class="fa-solid fa-warehouse w-5 text-center"></i> المخزون</button>
+    <button onclick="switchTab('orders');closeMobileMenu()" class="w-full text-right px-3 py-3 rounded-lg hover:bg-white/10 flex items-center gap-3 transition"><i class="fa-solid fa-clipboard-list w-5 text-center"></i> الطلبات</button>
+    <button onclick="switchTab('invoices');closeMobileMenu()" class="w-full text-right px-3 py-3 rounded-lg hover:bg-white/10 flex items-center gap-3 transition"><i class="fa-solid fa-file-invoice w-5 text-center"></i> المبيعات</button>
+    <button onclick="switchTab('purchases');closeMobileMenu()" class="w-full text-right px-3 py-3 rounded-lg hover:bg-white/10 flex items-center gap-3 transition"><i class="fa-solid fa-cart-flatbed w-5 text-center"></i> المشتريات</button>
+    <button onclick="switchTab('products');closeMobileMenu()" class="w-full text-right px-3 py-3 rounded-lg hover:bg-white/10 flex items-center gap-3 transition"><i class="fa-solid fa-box w-5 text-center"></i> المنتجات</button>
+    <button onclick="switchTab('clients');closeMobileMenu()" class="w-full text-right px-3 py-3 rounded-lg hover:bg-white/10 flex items-center gap-3 transition"><i class="fa-solid fa-users w-5 text-center"></i> الزبائن</button>
+    <button onclick="switchTab('companies');closeMobileMenu()" class="w-full text-right px-3 py-3 rounded-lg hover:bg-white/10 flex items-center gap-3 transition"><i class="fa-solid fa-building w-5 text-center"></i> الشركات</button>
+    <button onclick="switchTab('debts');closeMobileMenu()" class="w-full text-right px-3 py-3 rounded-lg hover:bg-white/10 flex items-center gap-3 transition"><i class="fa-solid fa-hand-holding-dollar w-5 text-center"></i> ديون الأشخاص</button>
+    <button onclick="switchTab('expenses');closeMobileMenu()" class="w-full text-right px-3 py-3 rounded-lg hover:bg-white/10 flex items-center gap-3 transition"><i class="fa-solid fa-wallet w-5 text-center"></i> المصاريف</button>
+    <button onclick="switchTab('reports');closeMobileMenu()" class="w-full text-right px-3 py-3 rounded-lg hover:bg-white/10 flex items-center gap-3 transition"><i class="fa-solid fa-chart-line w-5 text-center"></i> التقارير</button>
+    <button onclick="switchTab('settings');closeMobileMenu()" class="w-full text-right px-3 py-3 rounded-lg hover:bg-white/10 flex items-center gap-3 transition"><i class="fa-solid fa-gear w-5 text-center"></i> الإعدادات</button>
+  </div>
+  <div class="pt-3 border-t border-white/20 shrink-0">
+    <button onclick="exportDataBackup();closeMobileMenu()" class="w-full text-right px-3 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 flex items-center gap-3 transition text-white"><i class="fa-solid fa-cloud-arrow-down w-5 text-center"></i> نسخة احتياطية</button>
+  </div>
+</div>
 
 <main class="flex-grow max-w-[1680px] w-full mx-auto p-2.5 md:p-4">
 
@@ -361,7 +388,6 @@ tailwind.config = {
           <button onclick="openDirectSaleModal()" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2.5 rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap touch-btn"><i class="fa-solid fa-bag-shopping"></i> بيع سريع</button>
           <button onclick="openQuickProductModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2.5 rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap touch-btn"><i class="fa-solid fa-bolt"></i> منتج سريع</button>
         </div>
-
         <div id="posCategoryFilter" class="flex gap-2 overflow-x-auto pb-1 lg:hidden w-full" style="scrollbar-width: none;"></div>
       </div>
       <div id="posProductsGrid" class="w-full"></div>
@@ -469,7 +495,7 @@ tailwind.config = {
           <p class="text-xs text-slate-500">متابعة الكميات المتاحة، تنبيهات النواقص، وتعديل الرصيد مباشرة</p>
         </div>
         <div class="flex flex-wrap gap-2 w-full md:w-auto">
-          <input type="text" id="invSearchInput" oninput="debouncedRenderInventory()" placeholder="بحث باسم أو كود أو باركود..." class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold w-full sm:w-56">
+          <input type="text" id="invSearchInput" oninput="debouncedRenderInventory()" placeholder="بحث..." class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold w-full sm:w-56">
           <select id="invStatusFilter" onchange="renderInventory()" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold">
             <option value="all">كل الأصناف</option>
             <option value="low">منخفض / نافذ</option>
@@ -485,7 +511,8 @@ tailwind.config = {
     </div>
 
     <div class="bg-white rounded-2xl border shadow-sm overflow-x-auto num-tabular">
-      <table class="w-full text-right text-sm">
+      <!-- تم إضافة min-w-[800px] لمنع انضغاط الجدول في الهاتف -->
+      <table class="w-full min-w-[800px] text-right text-sm">
         <thead class="bg-ashour text-white font-bold">
           <tr>
             <th class="p-3">الكود</th>
@@ -546,7 +573,7 @@ tailwind.config = {
     </div>
 
     <div class="bg-white rounded-2xl border shadow-sm overflow-x-auto num-tabular">
-      <table class="w-full text-right text-sm">
+      <table class="w-full min-w-[900px] text-right text-sm">
         <thead class="bg-ashour text-white font-bold">
           <tr>
             <th class="p-3">الرقم</th><th class="p-3">التاريخ</th><th class="p-3">الزبون / البيان</th>
@@ -582,7 +609,7 @@ tailwind.config = {
     </div>
 
     <div class="bg-white rounded-2xl border shadow-sm overflow-x-auto num-tabular">
-      <table class="w-full text-right text-sm">
+      <table class="w-full min-w-[800px] text-right text-sm">
         <thead class="bg-slate-800 text-white font-bold">
           <tr>
             <th class="p-3">الكود</th><th class="p-3">التاريخ</th><th class="p-3">الشركة</th>
@@ -619,8 +646,10 @@ tailwind.config = {
       <input type="hidden" id="prodCategoryFilter" value="" onchange="renderProductsTable()">
       <span class="text-sm text-slate-500 font-bold mr-auto num-tabular">الإجمالي: <span id="prodCountBadge" class="text-ashour font-bold">0</span> منتج</span>
     </div>
+    
+    <!-- تم إضافة min-w-[900px] هنا لحل مشكلة الانضغاط في الصورة الأولى -->
     <div class="bg-white rounded-2xl border shadow-sm overflow-x-auto num-tabular">
-      <table class="w-full text-right text-sm">
+      <table class="w-full min-w-[900px] text-right text-sm">
         <thead class="bg-ashour text-white font-bold">
           <tr>
             <th class="p-3">الكود / الباركود</th><th class="p-3">اسم المنتج</th><th class="p-3">الفئة</th>
@@ -684,8 +713,8 @@ tailwind.config = {
     </div>
 
     <div id="ledgerStatementPanel" class="bg-white rounded-2xl border shadow-sm p-3 space-y-3 num-tabular">
-      <div class="max-h-[500px] overflow-y-auto border border-slate-200 rounded-xl">
-        <table class="w-full text-right text-sm">
+      <div class="max-h-[500px] overflow-auto border border-slate-200 rounded-xl">
+        <table class="w-full min-w-[700px] text-right text-sm">
           <thead class="bg-ashour text-white font-bold sticky top-0">
             <tr><th class="p-3">التاريخ</th><th class="p-3">التفاصيل</th><th class="p-3">مدين</th><th class="p-3">دائن</th><th class="p-3 text-center">إجراء</th></tr>
           </thead>
@@ -767,7 +796,7 @@ tailwind.config = {
     </div>
 
     <div class="bg-white rounded-2xl border shadow-sm overflow-x-auto num-tabular">
-      <table class="w-full text-right text-sm">
+      <table class="w-full min-w-[700px] text-right text-sm">
         <thead id="debtTableHead" class="bg-emerald-700 text-white font-bold">
           <tr><th class="p-3">الاسم</th><th class="p-3">الهاتف</th><th class="p-3">المبلغ</th><th class="p-3">ملاحظات</th><th class="p-3 text-center">إجراءات</th></tr>
         </thead>
@@ -783,7 +812,7 @@ tailwind.config = {
       <button onclick="openExpenseModal()" class="w-full md:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition"><i class="fa-solid fa-plus"></i> تسجيل مصروف</button>
     </div>
     <div class="bg-white rounded-2xl border shadow-sm overflow-x-auto num-tabular">
-      <table class="w-full text-right text-sm">
+      <table class="w-full min-w-[700px] text-right text-sm">
         <thead class="bg-purple-800 text-white font-bold"><tr><th class="p-3">التاريخ</th><th class="p-3">البند</th><th class="p-3">التصنيف</th><th class="p-3">المبلغ</th><th class="p-3">ملاحظات</th><th class="p-3 text-center">إجراء</th></tr></thead>
         <tbody id="expensesTableBody" class="divide-y divide-slate-100 font-semibold"></tbody>
       </table>
@@ -834,14 +863,14 @@ tailwind.config = {
       </div>
 
       <div class="space-y-2 pb-4 border-b border-slate-100 num-tabular">
-        <h3 class="font-bold text-sm text-slate-800"><i class="fa-solid fa-dollar-sign text-amber-600"></i> سعر صرف الدولار مقابل الليرة السورية (يدوي)</h3>
+        <h3 class="font-bold text-sm text-slate-800"><i class="fa-solid fa-dollar-sign text-amber-600"></i> سعر صرف الدولار (يدوي)</h3>
         <div class="flex flex-wrap items-center gap-2 text-sm font-bold">
           <span class="text-slate-600">1 دولار ($) =</span>
-          <input type="number" step="any" min="1" id="setExchangeRate" class="w-40 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2 text-sm font-bold text-slate-900">
+          <input type="number" step="any" min="1" id="setExchangeRate" class="w-32 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2 text-sm font-bold text-slate-900">
           <span class="text-slate-600">ل.س.ج</span>
-          <button onclick="saveExchangeRateSetting()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition">حفظ سعر الصرف</button>
+          <button onclick="saveExchangeRateSetting()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition">حفظ</button>
         </div>
-        <p class="text-xs text-slate-500 font-semibold">ملاحظة: سعر الصرف في كل فاتورة يُحفظ تلقائياً معها، وتعديله هنا لا يؤثر على الفواتير القديمة.</p>
+        <p class="text-xs text-slate-500 font-semibold">سعر الصرف يُحفظ في كل فاتورة ولا يتأثر بتعديله لاحقاً.</p>
       </div>
 
       <div class="space-y-2 pb-4 border-b border-slate-100 num-tabular">
@@ -852,9 +881,8 @@ tailwind.config = {
             <option value="58">58mm (صغير)</option>
             <option value="80">80mm (قياسي)</option>
           </select>
-          <button onclick="savePrinterWidth()" class="bg-ashour text-white px-3 py-2 rounded-xl text-xs font-bold">حفظ الإعداد</button>
+          <button onclick="savePrinterWidth()" class="bg-ashour text-white px-3 py-2 rounded-xl text-xs font-bold">حفظ</button>
         </div>
-        <p class="text-xs text-slate-500 font-semibold">الطباعة المباشرة تتم عبر زر "طباعة" في نافذة الفاتورة. للهواتف يُنصح بتثبيت التطبيق كـ APK.</p>
       </div>
 
       <div class="space-y-2 pb-4 border-b border-slate-100">
@@ -891,7 +919,7 @@ tailwind.config = {
         <h3 class="font-bold text-sm text-slate-800"><i class="fa-solid fa-database text-emerald-600"></i> النسخ الاحتياطي</h3>
         <div class="flex flex-wrap gap-2 items-center">
           <button type="button" onclick="exportDataBackup()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-4 py-2 rounded-xl"><i class="fa-solid fa-download"></i> تصدير</button>
-          <button type="button" onclick="triggerImportBackup()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-2 rounded-xl"><i class="fa-solid fa-upload"></i> استعادة نسخة</button>
+          <button type="button" onclick="triggerImportBackup()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-2 rounded-xl"><i class="fa-solid fa-upload"></i> استعادة</button>
           <input type="file" id="importBackupFile" onchange="importDataBackup(event)" class="sr-file-input" accept=".json,application/json,text/plain,*/*">
         </div>
       </div>
@@ -900,20 +928,16 @@ tailwind.config = {
 
       <div class="space-y-2 pb-4 border-b border-slate-100">
         <h3 class="font-bold text-sm text-slate-800"><i class="fa-solid fa-cash-register text-amber-600"></i> إغلاق الصندوق اليومي</h3>
-        <p class="text-xs text-slate-500 font-semibold">جرد مبيعات اليوم وحساب الفرق بين النقدية المتوقعة والفعلية.</p>
         <div class="flex gap-2">
-          <button onclick="openDailyCloseModal()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm px-4 py-2 rounded-xl"><i class="fa-solid fa-lock"></i> فتح إغلاق اليوم</button>
+          <button onclick="openDailyCloseModal()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm px-4 py-2 rounded-xl"><i class="fa-solid fa-lock"></i> إغلاق اليوم</button>
           <button onclick="viewLastDailyClose()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-sm px-4 py-2 rounded-xl">آخر إغلاق</button>
         </div>
       </div>
 
       <div class="space-y-2 pb-4 border-b border-slate-100">
         <h3 class="font-bold text-sm text-slate-800"><i class="fa-solid fa-flask text-purple-600"></i> بيانات تجريبية</h3>
-        <p class="text-xs text-slate-500 font-semibold">لتحميل 8 منتجات جاهزة (للتجربة فقط — تأكد من عدم وجود بيانات حقيقية).</p>
-        <button onclick="loadDemoData()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm px-4 py-2 rounded-xl"><i class="fa-solid fa-flask"></i> تحميل بيانات تجريبية</button>
+        <button onclick="loadDemoData()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm px-4 py-2 rounded-xl"><i class="fa-solid fa-flask"></i> تحميل منتجات تجريبية</button>
       </div>
-
-      <hr class="border-slate-100">
 
       <div class="space-y-2 num-tabular">
         <h3 class="font-bold text-sm text-slate-800"><i class="fa-solid fa-hard-drive text-emerald-600"></i> حالة التخزين</h3>
@@ -925,8 +949,7 @@ tailwind.config = {
 
       <hr class="border-slate-100 mt-4">
       <div class="space-y-2 mt-4 bg-rose-50/60 border border-rose-200 rounded-2xl p-3.5">
-        <h3 class="font-bold text-sm text-rose-700"><i class="fa-solid fa-broom"></i> تصفير السجلات مع الإبقاء على المنتجات فقط</h3>
-        <p class="text-xs text-slate-600 font-semibold">يحذف الفواتير والمبيعات السريعة والمرتجعات والمصاريف والمشتريات والطلبات والديون، ويحافظ على جميع المنتجات كما هي.</p>
+        <h3 class="font-bold text-sm text-rose-700"><i class="fa-solid fa-broom"></i> تصفير السجلات</h3>
         <button onclick="resetRecordsKeepProducts()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm px-4 py-2 rounded-xl"><i class="fa-solid fa-trash-can"></i> تصفير السجلات والإبقاء على المنتجات</button>
       </div>
 
